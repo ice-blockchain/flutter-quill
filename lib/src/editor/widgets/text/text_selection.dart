@@ -253,8 +253,7 @@ class EditorTextSelectionOverlay {
     }
   }
 
-  Widget _buildHandle(
-      BuildContext context, _TextSelectionHandlePosition position) {
+  Widget _buildHandle(BuildContext context, _TextSelectionHandlePosition position) {
     if (_selection.isCollapsed &&
         position == _TextSelectionHandlePosition.end) {
       return const SizedBox.shrink();
@@ -299,10 +298,8 @@ class EditorTextSelectionOverlay {
     }
   }
 
-  void _handleSelectionHandleChanged(
-    TextSelection? newSelection,
-    _TextSelectionHandlePosition position,
-  ) {
+  void _handleSelectionHandleChanged(TextSelection? newSelection,
+      _TextSelectionHandlePosition position,) {
     TextPosition textPosition;
     switch (position) {
       case _TextSelectionHandlePosition.start:
@@ -319,12 +316,12 @@ class EditorTextSelectionOverlay {
 
     final currSelection = newSelection != null
         ? DragTextSelection(
-            baseOffset: newSelection.baseOffset,
-            extentOffset: newSelection.extentOffset,
-            affinity: newSelection.affinity,
-            isDirectional: newSelection.isDirectional,
-            first: position == _TextSelectionHandlePosition.start,
-          )
+      baseOffset: newSelection.baseOffset,
+      extentOffset: newSelection.extentOffset,
+      affinity: newSelection.affinity,
+      isDirectional: newSelection.isDirectional,
+      first: position == _TextSelectionHandlePosition.start,
+    )
         : null;
 
     update(value.copyWith(
@@ -427,8 +424,7 @@ class _TextSelectionHandleOverlay extends StatefulWidget {
   }
 }
 
-class _TextSelectionHandleOverlayState
-    extends State<_TextSelectionHandleOverlay>
+class _TextSelectionHandleOverlayState extends State<_TextSelectionHandleOverlay>
     with SingleTickerProviderStateMixin {
   // ignore: unused_field
   late Offset _dragPosition;
@@ -490,7 +486,7 @@ class _TextSelectionHandleOverlayState
     widget.dragOffsetNotifier?.value = details.globalPosition;
     _dragPosition += details.delta;
     final position =
-        widget.renderObject.getPositionForOffset(details.globalPosition);
+    widget.renderObject.getPositionForOffset(details.globalPosition);
     if (widget.selection.isCollapsed) {
       widget.onSelectionHandleChanged(TextSelection.fromPosition(position));
       return;
@@ -503,23 +499,49 @@ class _TextSelectionHandleOverlayState
       case _TextSelectionHandlePosition.start:
         newSelection = TextSelection(
           baseOffset:
-              isNormalized ? position.offset : widget.selection.baseOffset,
+          isNormalized ? position.offset : widget.selection.baseOffset,
           extentOffset:
-              isNormalized ? widget.selection.extentOffset : position.offset,
+          isNormalized ? widget.selection.extentOffset : position.offset,
         );
         break;
       case _TextSelectionHandlePosition.end:
         newSelection = TextSelection(
           baseOffset:
-              isNormalized ? widget.selection.baseOffset : position.offset,
+          isNormalized ? widget.selection.baseOffset : position.offset,
           extentOffset:
-              isNormalized ? position.offset : widget.selection.extentOffset,
+          isNormalized ? position.offset : widget.selection.extentOffset,
         );
         break;
     }
 
     if (newSelection.baseOffset >= newSelection.extentOffset) {
-      return; // don't allow order swapping.
+      if (widget.position == _TextSelectionHandlePosition.start) {
+        return;
+      }
+      // Try to get the position above the current position to avoid order swapping
+      // Try up to 3 times to find a valid position
+      var currentPosition = newSelection.baseOffset;
+      var validPosition = currentPosition;
+
+      for (int i = 0; i < 3; i++) {
+        final positionAbove = widget.renderObject.getTextPositionAbove(
+            TextPosition(offset: currentPosition));
+        if (positionAbove.offset < newSelection.extentOffset) {
+          validPosition = positionAbove.offset;
+          break;
+        }
+        currentPosition = positionAbove.offset;
+      }
+
+      if (validPosition < newSelection.extentOffset) {
+        // Use the valid position found
+        newSelection = TextSelection(
+          baseOffset: validPosition,
+          extentOffset: newSelection.extentOffset,
+        );
+      } else {
+        return; // don't allow order swapping.
+      }
     }
 
     widget.onSelectionHandleChanged(newSelection);
@@ -544,7 +566,7 @@ class _TextSelectionHandleOverlayState
         );
         break;
       case _TextSelectionHandlePosition.end:
-        // For collapsed selections, we shouldn't be building the [end] handle.
+      // For collapsed selections, we shouldn't be building the [end] handle.
         assert(!widget.selection.isCollapsed);
         layerLink = widget.endHandleLayerLink;
         type = _chooseType(
@@ -566,7 +588,7 @@ class _TextSelectionHandleOverlayState
         : widget.selection.extent;
     final lineHeight = widget.renderObject.preferredLineHeight(textPosition);
     final handleAnchor =
-        widget.selectionControls.getHandleAnchor(type!, lineHeight);
+    widget.selectionControls.getHandleAnchor(type!, lineHeight);
     final handleSize = widget.selectionControls.getHandleSize(lineHeight);
 
     final handleRect = Rect.fromLTWH(
@@ -624,11 +646,9 @@ class _TextSelectionHandleOverlayState
     );
   }
 
-  TextSelectionHandleType? _chooseType(
-    TextDirection textDirection,
-    TextSelectionHandleType ltrType,
-    TextSelectionHandleType rtlType,
-  ) {
+  TextSelectionHandleType? _chooseType(TextDirection textDirection,
+      TextSelectionHandleType ltrType,
+      TextSelectionHandleType rtlType,) {
     if (widget.selection.isCollapsed) return TextSelectionHandleType.collapsed;
 
     switch (textDirection) {
@@ -766,8 +786,7 @@ class EditorTextSelectionGestureDetector extends StatefulWidget {
       _EditorTextSelectionGestureDetectorState();
 }
 
-class _EditorTextSelectionGestureDetectorState
-    extends State<EditorTextSelectionGestureDetector> {
+class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelectionGestureDetector> {
   // Counts down for a short duration after a previous tap. Null otherwise.
   Timer? _doubleTapTimer;
   Offset? _lastTapOffset;
@@ -912,7 +931,7 @@ class _EditorTextSelectionGestureDetectorState
     widget.dragOffsetNotifier?.value = _lastDragUpdateDetails?.globalPosition;
     if (widget.onDragSelectionUpdate != null) {
       widget.onDragSelectionUpdate!(
-          //_lastDragStartDetails!,
+        //_lastDragStartDetails!,
           _lastDragUpdateDetails!);
     }
     _dragUpdateThrottleTimer = null;
@@ -993,33 +1012,34 @@ class _EditorTextSelectionGestureDetectorState
     // on top of it also receives.
     gestures[_TransparentTapGestureRecognizer] =
         GestureRecognizerFactoryWithHandlers<_TransparentTapGestureRecognizer>(
-      () => _TransparentTapGestureRecognizer(debugOwner: this),
-      (instance) {
-        instance
-          ..onTapDown = _handleTapDown
-          ..onTapUp = _handleTapUp
-          ..onTapCancel = _handleTapCancel
-          ..onSecondaryTapDown = _handleSecondaryTapDown
-          ..onSecondaryTapUp = _handleSecondaryTapUp
-          ..onSecondaryTapCancel = _handleSecondaryTapCancel;
-      },
-    );
+              () => _TransparentTapGestureRecognizer(debugOwner: this),
+              (instance) {
+            instance
+              ..onTapDown = _handleTapDown
+              ..onTapUp = _handleTapUp
+              ..onTapCancel = _handleTapCancel
+              ..onSecondaryTapDown = _handleSecondaryTapDown
+              ..onSecondaryTapUp = _handleSecondaryTapUp
+              ..onSecondaryTapCancel = _handleSecondaryTapCancel;
+          },
+        );
 
     if (widget.onSingleLongTapStart != null ||
         widget.onSingleLongTapMoveUpdate != null ||
         widget.onSingleLongTapEnd != null) {
       gestures[LongPressGestureRecognizer] =
           GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-        () => LongPressGestureRecognizer(
-            debugOwner: this,
-            supportedDevices: <PointerDeviceKind>{PointerDeviceKind.touch}),
-        (instance) {
-          instance
-            ..onLongPressStart = _handleLongPressStart
-            ..onLongPressMoveUpdate = _handleLongPressMoveUpdate
-            ..onLongPressEnd = _handleLongPressEnd;
-        },
-      );
+                () =>
+                LongPressGestureRecognizer(
+                    debugOwner: this,
+                    supportedDevices: <PointerDeviceKind>{PointerDeviceKind.touch}),
+                (instance) {
+              instance
+                ..onLongPressStart = _handleLongPressStart
+                ..onLongPressMoveUpdate = _handleLongPressMoveUpdate
+                ..onLongPressEnd = _handleLongPressEnd;
+            },
+          );
     }
 
     if (widget.onDragSelectionStart != null ||
@@ -1027,32 +1047,33 @@ class _EditorTextSelectionGestureDetectorState
         widget.onDragSelectionEnd != null) {
       gestures[HorizontalDragGestureRecognizer] =
           GestureRecognizerFactoryWithHandlers<HorizontalDragGestureRecognizer>(
-        () => HorizontalDragGestureRecognizer(
-            debugOwner: this,
-            supportedDevices: <PointerDeviceKind>{PointerDeviceKind.mouse}),
-        (instance) {
-          // Text selection should start from the position of the first pointer
-          // down event.
-          instance
-            ..dragStartBehavior = DragStartBehavior.down
-            ..onStart = _handleDragStart
-            ..onUpdate = _handleDragUpdate
-            ..onEnd = _handleDragEnd;
-        },
-      );
+                () =>
+                HorizontalDragGestureRecognizer(
+                    debugOwner: this,
+                    supportedDevices: <PointerDeviceKind>{PointerDeviceKind.mouse}),
+                (instance) {
+              // Text selection should start from the position of the first pointer
+              // down event.
+              instance
+                ..dragStartBehavior = DragStartBehavior.down
+                ..onStart = _handleDragStart
+                ..onUpdate = _handleDragUpdate
+                ..onEnd = _handleDragEnd;
+            },
+          );
     }
 
     if (widget.onForcePressStart != null || widget.onForcePressEnd != null) {
       gestures[ForcePressGestureRecognizer] =
           GestureRecognizerFactoryWithHandlers<ForcePressGestureRecognizer>(
-        () => ForcePressGestureRecognizer(debugOwner: this),
-        (instance) {
-          instance
-            ..onStart =
+                () => ForcePressGestureRecognizer(debugOwner: this),
+                (instance) {
+              instance
+                ..onStart =
                 widget.onForcePressStart != null ? _forcePressStarted : null
-            ..onEnd = widget.onForcePressEnd != null ? _forcePressEnded : null;
-        },
-      );
+                ..onEnd = widget.onForcePressEnd != null ? _forcePressEnded : null;
+            },
+          );
     }
 
     return RawGestureDetector(
@@ -1062,12 +1083,12 @@ class _EditorTextSelectionGestureDetectorState
       child: (widget.quillMagnifierBuilder == null)
           ? widget.child
           : Stack(
-              children: [
-                widget.child,
-                if (_magnifierPosition != null)
-                  widget.quillMagnifierBuilder!(_magnifierPosition!)
-              ],
-            ),
+        children: [
+          widget.child,
+          if (_magnifierPosition != null)
+            widget.quillMagnifierBuilder!(_magnifierPosition!)
+        ],
+      ),
     );
   }
 }
