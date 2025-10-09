@@ -515,7 +515,7 @@ class _TextSelectionHandleOverlayState extends State<_TextSelectionHandleOverlay
     }
 
     if (newSelection.baseOffset >= newSelection.extentOffset) {
-      if (widget.position == _TextSelectionHandlePosition.start) {
+      if (widget.position != _TextSelectionHandlePosition.start) {
         return;
       }
       // Try to get the position above the current position to avoid order swapping
