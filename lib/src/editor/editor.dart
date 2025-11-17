@@ -510,7 +510,44 @@ class _QuillEditorSelectionGestureDetectorBuilder
       return;
     }
 
-    editor!.hideToolbar();
+    // Check if tap is within the current selection
+    final currentSelection = renderEditor?.selection;
+    final tapPosition = renderEditor?.getPositionForOffset(details.globalPosition);
+    final isTapOnSelectedText = currentSelection != null &&
+                                tapPosition != null &&
+                                !currentSelection.isCollapsed &&
+                                tapPosition.offset >= currentSelection.start &&
+                                tapPosition.offset < currentSelection.end;
+
+    // If tapping on selected text, show toolbar without changing selection
+    if (isTapOnSelectedText) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (renderEditor != null && !renderEditor!.selection.isCollapsed) {
+          editor!.showToolbar();
+        }
+      });
+      return;
+    }
+
+    // Delay hiding toolbar to allow selection to complete
+    // For touch devices, we show toolbar on single tap when focused, so don't hide it
+    // For other cases, hide toolbar if selection is collapsed
+    final isTouchDevice = details.kind == PointerDeviceKind.touch || 
+                         details.kind == PointerDeviceKind.unknown;
+    final shouldShowToolbarOnSingleTap = isTouchDevice && 
+                                         renderEditor != null && 
+                                         renderEditor!._hasFocus;
+    
+    if (!shouldShowToolbarOnSingleTap) {
+      // Only hide toolbar if we're not showing it on single tap
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        // Don't hide toolbar if there's a non-collapsed selection
+        // The toolbar should remain visible when text is selected
+        if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+          editor!.hideToolbar();
+        }
+      });
+    }
 
     try {
       if (delegate.selectionEnabled && !_isPositionSelected(details)) {
@@ -537,16 +574,33 @@ class _QuillEditorSelectionGestureDetectorBuilder
               break;
             case PointerDeviceKind.touch:
             case PointerDeviceKind.unknown:
-              // On macOS/iOS/iPadOS a touch tap places the cursor at the edge
-              // of the word.
+              // On Android/iOS, when the field has focus, single tap should show toolbar
+              // but NOT select the word (word selection only happens on double tap)
               if (_detectWordBoundary) {
                 renderEditor!
                   ..selectWordEdge(SelectionChangedCause.tap)
                   ..onSelectionCompleted();
+                // Show toolbar on single tap when field has focus (like Flutter TextField)
+                if (renderEditor!._hasFocus) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+                      // Only show toolbar if selection is still collapsed (not a double tap)
+                      editor!.showToolbar();
+                    }
+                  });
+                }
               } else {
                 renderEditor!
                   ..selectPosition(cause: SelectionChangedCause.tap)
                   ..onSelectionCompleted();
+                // Show toolbar on single tap when field has focus
+                if (renderEditor!._hasFocus) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+                      editor!.showToolbar();
+                    }
+                  });
+                }
               }
               break;
             case PointerDeviceKind.trackpad:

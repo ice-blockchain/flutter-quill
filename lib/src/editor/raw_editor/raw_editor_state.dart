@@ -151,16 +151,16 @@ class QuillRawEditorState extends EditorState
   /// Select the entire text value.
   @override
   void selectAll(SelectionChangedCause cause) {
-    userUpdateTextEditingValue(
-      textEditingValue.copyWith(
-        selection: TextSelection(
-            baseOffset: 0, extentOffset: textEditingValue.text.length),
-      ),
-      cause,
+    final documentLength = controller.document.length;
+    final newSelection = TextSelection(
+      baseOffset: 0,
+      extentOffset: documentLength,
     );
-
+    
+    controller.updateSelection(newSelection, ChangeSource.local);
+    
     if (cause == SelectionChangedCause.toolbar) {
-      bringIntoView(textEditingValue.selection.extent);
+      bringIntoView(newSelection.extent);
     }
   }
 
@@ -1031,6 +1031,12 @@ class QuillRawEditorState extends EditorState
     if (ignoreCaret) {
       return;
     }
+
+    // Hide toolbar when text changes (user typing)
+    // This is called when the controller notifies listeners, which happens
+    // when text is inserted/deleted, so we hide the toolbar
+    hideToolbar();
+
     _showCaretOnScreen();
     _cursorCont.startOrStopCursorTimerIfNeeded(_hasFocus, controller.selection);
     if (hasConnection) {
@@ -1062,7 +1068,11 @@ class QuillRawEditorState extends EditorState
 
   void _updateOrDisposeSelectionOverlayIfNeeded() {
     if (_selectionOverlay != null) {
-      if (!_hasFocus || textEditingValue.selection.isCollapsed) {
+      if (!_hasFocus) {
+        _selectionOverlay!.dispose();
+        _selectionOverlay = null;
+      } else if (textEditingValue.selection.isCollapsed && _selectionOverlay!.toolbar == null) {
+        // Only dispose the selection overlay when selection is collapsed and no toolbar is shown
         _selectionOverlay!.dispose();
         _selectionOverlay = null;
       } else {

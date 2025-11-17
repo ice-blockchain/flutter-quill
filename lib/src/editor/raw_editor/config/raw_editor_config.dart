@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 
@@ -216,10 +217,85 @@ class QuillRawEditorConfig {
     BuildContext context,
     QuillRawEditorState state,
   ) {
+    // Use the editor's context to get the theme and media query, as the overlay context
+    // might not have access to the theme ancestor or correct brightness
+    final editorContext = state.context;
+    final theme = Theme.of(editorContext);
+    final mediaQuery = MediaQuery.of(editorContext);
+    
+    // Check if we're in dark mode
+    final brightness = mediaQuery.platformBrightness;
+    final isDarkMode = brightness == Brightness.dark;
+    
+    // Create custom theme for the toolbar based on dark/light mode
+    // AdaptiveTextSelectionToolbar uses canvasColor and textTheme for styling
+    // On iOS, it also uses CupertinoTheme
+    final isIOS = Theme.of(editorContext).platform == TargetPlatform.iOS;
+    final darkBackground = const Color(0xFF1C1C1E); // Dark gray background like iOS
+    final lightBackground = Colors.white;
+    
+    final toolbarTheme = isDarkMode
+        ? ThemeData(
+            platform: Theme.of(editorContext).platform,
+            brightness: Brightness.dark,
+            canvasColor: darkBackground,
+            cardColor: darkBackground,
+            dialogBackgroundColor: darkBackground,
+            scaffoldBackgroundColor: darkBackground,
+            colorScheme: ColorScheme.dark().copyWith(
+              surface: darkBackground,
+              onSurface: Colors.white,
+            ),
+            textTheme: Theme.of(editorContext).textTheme.apply(
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
+          )
+        : ThemeData(
+            platform: Theme.of(editorContext).platform,
+            brightness: Brightness.light,
+            canvasColor: lightBackground,
+            cardColor: lightBackground,
+            dialogBackgroundColor: lightBackground,
+            scaffoldBackgroundColor: lightBackground,
+            colorScheme: ColorScheme.light().copyWith(
+              surface: lightBackground,
+              onSurface: Colors.black,
+            ),
+            textTheme: Theme.of(editorContext).textTheme.apply(
+              bodyColor: Colors.black,
+              displayColor: Colors.black,
+            ),
+          );
+    
+    Widget toolbar = AdaptiveTextSelectionToolbar.buttonItems(
+      buttonItems: state.contextMenuButtonItems,
+      anchors: state.contextMenuAnchors,
+    );
+    
+    // Wrap with CupertinoTheme on iOS for proper styling
+    if (isIOS) {
+      toolbar = CupertinoTheme(
+        data: CupertinoThemeData(
+          brightness: isDarkMode ? Brightness.dark : Brightness.light,
+          primaryColor: isDarkMode ? Colors.white : Colors.black,
+          textTheme: CupertinoTextThemeData(
+            textStyle: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+        child: toolbar,
+      );
+    }
+    
     return TextFieldTapRegion(
-      child: AdaptiveTextSelectionToolbar.buttonItems(
-        buttonItems: state.contextMenuButtonItems,
-        anchors: state.contextMenuAnchors,
+      child: MediaQuery(
+        data: mediaQuery,
+        child: Theme(
+          data: toolbarTheme,
+          child: toolbar,
+        ),
       ),
     );
   }

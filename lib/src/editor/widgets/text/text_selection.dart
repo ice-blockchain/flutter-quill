@@ -850,7 +850,6 @@ class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelection
         _isWithinDoubleTapTolerance(details.globalPosition)) {
       // If there was already a previous tap, the second down hold/tap is a
       // double tap down.
-
       widget.onDoubleTapDown?.call(details);
 
       _doubleTapTimer!.cancel();

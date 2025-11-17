@@ -295,7 +295,18 @@ class EditorTextSelectionGestureDetectorBuilder {
       // have focus, selection hasn't been set when the toolbars
       // get added
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (checkSelectionToolbarShouldShow(isAdditionalAction: false)) {
+        // For touch devices (Android/iOS), double-tap word selection should
+        // always show the toolbar (standard behavior). For mouse devices, it
+        // should show as an additional action (similar to right-click).
+        final isMouseDoubleTap = kind == PointerDeviceKind.mouse;
+        if (isMouseDoubleTap) {
+          // For mouse, use the check with additional action requirement
+          if (checkSelectionToolbarShouldShow(isAdditionalAction: true)) {
+            editor!.showToolbar();
+          }
+        } else {
+          // For touch devices, always show toolbar on double-tap word selection
+          // This matches standard Flutter TextField behavior
           editor!.showToolbar();
         }
       });
