@@ -18,6 +18,7 @@ import 'config/editor_config.dart';
 import 'embed/embed_editor_builder.dart';
 import 'raw_editor/config/raw_editor_config.dart';
 import 'raw_editor/raw_editor.dart';
+import 'raw_editor/raw_editor_state.dart';
 import 'widgets/box.dart';
 import 'widgets/cursor.dart';
 import 'widgets/delegate.dart';
@@ -189,9 +190,6 @@ class QuillEditorState extends State<QuillEditor>
   late EditorTextSelectionGestureDetectorBuilder _selectionGestureDetectorBuilder;
 
   QuillController get controller => widget.controller;
-
-  // Track previous cursor position to only show tooltip when position changes
-  int? _previousCursorOffset;
 
   @Deprecated('Use config instead')
   QuillEditorConfig get configurations => widget.config;
@@ -571,6 +569,10 @@ class _QuillEditorSelectionGestureDetectorBuilder
               // On Android/iOS, when the field has focus, single tap should show toolbar
               // but NOT select the word (word selection only happens on double tap)
               if (_detectWordBoundary) {
+                // Capture cursor position before selection change
+                final rawEditorState = editor as QuillRawEditorState?;
+                final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
+
                 renderEditor!
                   ..selectWordEdge(SelectionChangedCause.tap)
                   ..onSelectionCompleted();
@@ -581,15 +583,22 @@ class _QuillEditorSelectionGestureDetectorBuilder
                     if (renderEditor != null && renderEditor!.selection.isCollapsed) {
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
-                      if (currentOffset == _state._previousCursorOffset) {
+                      // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
+                      // it matches the previous cursor position, show toolbar
+                      if (rawEditorState != null &&
+                          cursorOffsetBeforeTap != null &&
+                          currentOffset == cursorOffsetBeforeTap &&
+                          cursorOffsetBeforeTap == rawEditorState.previousCursorOffset) {
                         editor!.showToolbar();
                       }
-                      // Always update previous offset for next comparison
-                      _state._previousCursorOffset = currentOffset;
                     }
                   });
                 }
               } else {
+                // Capture cursor position before selection change
+                final rawEditorState = editor as QuillRawEditorState?;
+                final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
+
                 renderEditor!
                   ..selectPosition(cause: SelectionChangedCause.tap)
                   ..onSelectionCompleted();
@@ -600,11 +609,14 @@ class _QuillEditorSelectionGestureDetectorBuilder
                     if (renderEditor != null && renderEditor!.selection.isCollapsed) {
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
-                      if (currentOffset == _state._previousCursorOffset) {
+                      // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
+                      // it matches the previous cursor position, show toolbar
+                      if (rawEditorState != null &&
+                          cursorOffsetBeforeTap != null &&
+                          currentOffset == cursorOffsetBeforeTap &&
+                          cursorOffsetBeforeTap == rawEditorState.previousCursorOffset) {
                         editor!.showToolbar();
                       }
-                      // Always update previous offset for next comparison
-                      _state._previousCursorOffset = currentOffset;
                     }
                   });
                 }
