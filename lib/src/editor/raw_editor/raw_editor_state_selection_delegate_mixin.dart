@@ -114,7 +114,12 @@ mixin RawEditorStateSelectionDelegateMixin on EditorState implements TextSelecti
       widget.config.contextMenuBuilder != null && !textEditingValue.selection.isCollapsed;
 
   @override
-  bool get pasteEnabled => widget.config.contextMenuBuilder != null && !widget.config.readOnly;
+  bool get pasteEnabled {
+    if (widget.config.selectionCtrls is! TextSelectionHandleControls) {
+      return widget.config.contextMenuBuilder != null && !widget.config.readOnly;
+    }
+    return !widget.config.readOnly && (clipboardStatus?.value == ClipboardStatus.pasteable);
+  }
 
   @override
   bool get selectAllEnabled =>

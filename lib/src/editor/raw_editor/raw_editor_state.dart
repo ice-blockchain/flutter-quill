@@ -104,6 +104,9 @@ class QuillRawEditorState extends EditorState
   int? get previousCursorOffset => _previousCursorOffset;
 
   @override
+  ClipboardStatusNotifier? get clipboardStatus => _clipboardStatus;
+
+  @override
   void insertContent(KeyboardInsertedContent content) {
     assert(
         widget.config.contentInsertionConfiguration?.allowedMimeTypes.contains(content.mimeType) ??
