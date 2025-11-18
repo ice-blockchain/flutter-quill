@@ -578,6 +578,7 @@ class _QuillEditorSelectionGestureDetectorBuilder
                   ..onSelectionCompleted();
                 // Show toolbar on single tap when field has focus (like Flutter TextField)
                 // Only show if cursor position matches previous position (same position tapped)
+                // On second tap when text is empty, show toolbar even if previousCursorOffset is null
                 if (renderEditor!._hasFocus) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
                     if (renderEditor != null && renderEditor!.selection.isCollapsed) {
@@ -585,10 +586,16 @@ class _QuillEditorSelectionGestureDetectorBuilder
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
                       // it matches the previous cursor position, show toolbar
-                      if (rawEditorState != null &&
+                      // Special case: if document is empty and cursor is at 0, show toolbar on second tap
+                      final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
+                      final shouldShow = rawEditorState != null &&
                           cursorOffsetBeforeTap != null &&
                           currentOffset == cursorOffsetBeforeTap &&
-                          cursorOffsetBeforeTap == rawEditorState.previousCursorOffset) {
+                          (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
+                              (isEmpty &&
+                                  currentOffset == 0 &&
+                                  rawEditorState.previousCursorOffset == null));
+                      if (shouldShow) {
                         editor!.showToolbar();
                       }
                     }
@@ -604,6 +611,7 @@ class _QuillEditorSelectionGestureDetectorBuilder
                   ..onSelectionCompleted();
                 // Show toolbar on single tap when field has focus
                 // Only show if cursor position matches previous position (same position tapped)
+                // On second tap when text is empty, show toolbar even if previousCursorOffset is null
                 if (renderEditor!._hasFocus) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
                     if (renderEditor != null && renderEditor!.selection.isCollapsed) {
@@ -611,10 +619,16 @@ class _QuillEditorSelectionGestureDetectorBuilder
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
                       // it matches the previous cursor position, show toolbar
-                      if (rawEditorState != null &&
+                      // Special case: if document is empty and cursor is at 0, show toolbar on second tap
+                      final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
+                      final shouldShow = rawEditorState != null &&
                           cursorOffsetBeforeTap != null &&
                           currentOffset == cursorOffsetBeforeTap &&
-                          cursorOffsetBeforeTap == rawEditorState.previousCursorOffset) {
+                          (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
+                              (isEmpty &&
+                                  currentOffset == 0 &&
+                                  rawEditorState.previousCursorOffset == null));
+                      if (shouldShow) {
                         editor!.showToolbar();
                       }
                     }

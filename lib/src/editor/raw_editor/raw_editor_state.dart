@@ -185,7 +185,14 @@ class QuillRawEditorState extends EditorState
       onSearchWeb:
           searchWebEnabled ? () => searchWebForSelection(SelectionChangedCause.toolbar) : null,
       onShare: shareEnabled ? () => shareSelection(SelectionChangedCause.toolbar) : null,
-      onLiveTextInput: liveTextInputEnabled ? () {} : null,
+      onLiveTextInput: liveTextInputEnabled
+          ? () async {
+              final isLiveTextInputAvailable = await LiveText.isLiveTextInputAvailable();
+              if (isLiveTextInputAvailable) {
+                LiveText.startLiveTextInput();
+              }
+            }
+          : null,
     );
   }
 
@@ -1241,10 +1248,12 @@ class QuillRawEditorState extends EditorState
       _updateOrDisposeSelectionOverlayIfNeeded();
     }
 
-    if (_selectionOverlay == null || _selectionOverlay!.toolbar != null) {
+    if (_selectionOverlay == null) {
       return false;
     }
 
+    // Allow showing toolbar even if one exists - it will hide the old one and show new one
+    // This enables smooth transitions with two toolbar instances (hiding and showing)
     _selectionOverlay!.update(textEditingValue);
     _selectionOverlay!.showToolbar();
     return true;
@@ -1299,7 +1308,7 @@ class QuillRawEditorState extends EditorState
   }
 
   @override
-  bool get liveTextInputEnabled => false;
+  bool get liveTextInputEnabled => textEditingValue.selection.isCollapsed;
 
   @override
   bool get lookUpEnabled => false;
@@ -1309,4 +1318,7 @@ class QuillRawEditorState extends EditorState
 
   @override
   bool get shareEnabled => false;
+
+  @override
+  bool get pasteEnabled => true;
 }

@@ -13,6 +13,7 @@ import '../../../editor/widgets/default_styles.dart';
 import '../../../editor/widgets/delegate.dart';
 import '../../../editor/widgets/link.dart';
 import '../../../toolbar/theme/quill_dialog_theme.dart';
+import '../../widgets/text/custom_cupertino_text_selection_toolbar_button.dart';
 import '../../widgets/text/magnifier.dart';
 import '../../widgets/text/utils/text_block_utils.dart';
 import '../builders/leading_block_builder.dart';
@@ -267,13 +268,22 @@ class QuillRawEditorConfig {
                 ),
           );
 
-    Widget toolbar = AdaptiveTextSelectionToolbar.buttonItems(
-      buttonItems: state.contextMenuButtonItems,
-      anchors: state.contextMenuAnchors,
-    );
+    Widget toolbar;
 
-    // Wrap with CupertinoTheme on iOS for proper styling
     if (isIOS) {
+      // For iOS, use custom buttons with smaller fontSize
+      final customButtons = state.contextMenuButtonItems.map((buttonItem) {
+        return CustomCupertinoTextSelectionToolbarButton.buttonItem(
+          buttonItem: buttonItem,
+        );
+      }).toList();
+
+      toolbar = AdaptiveTextSelectionToolbar(
+        anchors: state.contextMenuAnchors,
+        children: customButtons,
+      );
+
+      // Wrap with CupertinoTheme on iOS for proper styling
       toolbar = CupertinoTheme(
         data: CupertinoThemeData(
           brightness: isDarkMode ? Brightness.dark : Brightness.light,
@@ -285,6 +295,12 @@ class QuillRawEditorConfig {
           ),
         ),
         child: toolbar,
+      );
+    } else {
+      // For Android and other platforms, use the default buttonItems
+      toolbar = AdaptiveTextSelectionToolbar.buttonItems(
+        buttonItems: state.contextMenuButtonItems,
+        anchors: state.contextMenuAnchors,
       );
     }
 

@@ -184,8 +184,11 @@ class EditorTextSelectionOverlay {
   /// second is hidden when the selection is collapsed.
   List<OverlayEntry>? _handles;
 
-  /// A copy/paste toolbar.
+  /// A copy/paste toolbar (currently showing).
   OverlayEntry? toolbar;
+
+  /// A copy/paste toolbar that is currently hiding (animating out).
+  OverlayEntry? _hidingToolbar;
 
   TextSelection get _selection => value.selection;
 
@@ -216,25 +219,76 @@ class EditorTextSelectionOverlay {
   /// Hides the toolbar part of the overlay.
   ///
   /// To hide the whole overlay, see [hide].
+  ///
+  /// This method is synchronous and returns immediately, allowing the hiding
+  /// animation to run concurrently with showing a new toolbar.
   void hideToolbar() {
-    assert(toolbar != null);
+    if (toolbar == null) return;
+
     dragOffsetNotifier?.removeListener(_dragOffsetListener);
-    toolbar!.remove();
+
+    // Move current toolbar to hiding state and create a new overlay entry
+    // that will animate out
+    final currentToolbar = toolbar;
     toolbar = null;
+
+    // Create a new overlay entry for the hiding toolbar
+    _hidingToolbar = OverlayEntry(builder: (context) {
+      if (dragOffsetNotifier?.value != null) {
+        return Container();
+      }
+      return _HidingToolbar(
+        child: contextMenuBuilder!(context),
+      );
+    });
+
+    // Insert the hiding toolbar at the same position
+    Overlay.of(this.context, rootOverlay: true, debugRequiredFor: debugRequiredFor)
+        .insert(_hidingToolbar!);
+
+    // Remove the old toolbar immediately (it's replaced by the hiding one)
+    currentToolbar?.remove();
+
+    // Remove hiding toolbar after animation completes (unawaited)
+    unawaited(
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _hidingToolbar?.remove();
+        _hidingToolbar = null;
+      }),
+    );
   }
 
   /// Shows the toolbar by inserting it into the [context]'s overlay.
   void showToolbar() {
-    assert(toolbar == null);
+    // Always hide existing toolbar first to trigger animation
+    // This ensures the toolbar always animates, even if cursor hasn't moved
+    final hadExistingToolbar = toolbar != null;
+    if (hadExistingToolbar) {
+      hideToolbar();
+      // Wait a frame to ensure hide animation starts before showing new one
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _showNewToolbar();
+      });
+    } else {
+      _showNewToolbar();
+    }
+  }
+
+  void _showNewToolbar() {
     if (contextMenuBuilder == null) return;
     dragOffsetNotifier?.addListener(_dragOffsetListener);
+
+    // Create new toolbar instance (showing animation)
+    // This creates a fresh animation every time, restarting the show animation
     toolbar = OverlayEntry(builder: (context) {
       // when the dragOffsetNotifier is not null and the value is not null
       // the magnifier is being shown, so we don't want to show the context menu
       if (dragOffsetNotifier?.value != null) {
         return Container();
       }
-      return contextMenuBuilder!(context);
+      return _ShowingToolbar(
+        child: contextMenuBuilder!(context),
+      );
     });
     Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor).insert(toolbar!);
 
@@ -340,6 +394,7 @@ class EditorTextSelectionOverlay {
       _handles![1].markNeedsBuild();
     }
     toolbar?.markNeedsBuild();
+    _hidingToolbar?.markNeedsBuild();
   }
 
   /// Hides the entire overlay including the toolbar and the handles.
@@ -352,6 +407,9 @@ class EditorTextSelectionOverlay {
     if (toolbar != null) {
       hideToolbar();
     }
+    // Also clean up hiding toolbar if it exists
+    _hidingToolbar?.remove();
+    _hidingToolbar = null;
   }
 
   /// Final cleanup.
@@ -1095,6 +1153,126 @@ class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelection
 // This enables proper handling of events on both the selection handle and the
 // underlying input, since there is significant overlap between the two given
 // the handle's padded hit area.  For example, the selection handle needs to
+/// Animated toolbar widget that expands from bottom to top when showing.
+class _ShowingToolbar extends StatefulWidget {
+  const _ShowingToolbar({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<_ShowingToolbar> createState() => _ShowingToolbarState();
+}
+
+class _ShowingToolbarState extends State<_ShowingToolbar> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        // If animation is at 0, return empty container
+        if (_scaleAnimation.value == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: _scaleAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// Animated toolbar widget that shrinks from top to bottom when hiding.
+class _HidingToolbar extends StatefulWidget {
+  const _HidingToolbar({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<_HidingToolbar> createState() => _HidingToolbarState();
+}
+
+class _HidingToolbarState extends State<_HidingToolbar> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _scaleAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    );
+    // Start from full height and animate to 0
+    _controller.value = 1.0;
+    _controller.reverse();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _scaleAnimation,
+      builder: (context, child) {
+        // If animation is at 0, return empty container
+        if (_scaleAnimation.value == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: _scaleAnimation.value,
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
 // handle single taps on itself, but double taps need to be handled by the
 // underlying input.
 class _TransparentTapGestureRecognizer extends TapGestureRecognizer {
