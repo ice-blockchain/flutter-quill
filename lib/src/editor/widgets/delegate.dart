@@ -3,7 +3,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
-import '../../common/utils/platform.dart';
 import '../../document/attribute.dart';
 import '../../document/nodes/leaf.dart';
 import '../editor.dart';
@@ -13,8 +12,7 @@ import 'text/text_selection.dart';
 
 typedef CustomStyleBuilder = TextStyle Function(Attribute attribute);
 
-typedef CustomRecognizerBuilder = GestureRecognizer? Function(
-    Attribute attribute, Leaf leaf);
+typedef CustomRecognizerBuilder = GestureRecognizer? Function(Attribute attribute, Leaf leaf);
 
 /// Delegate interface for the [EditorTextSelectionGestureDetectorBuilder].
 ///
@@ -127,9 +125,7 @@ class EditorTextSelectionGestureDetectorBuilder {
     // For backwards-compatibility, we treat a null kind the same as touch.
     kind = details.kind;
     shouldShowSelectionToolbar = kind == null ||
-        kind ==
-            PointerDeviceKind
-                .mouse || // Enable word selection by mouse double tap
+        kind == PointerDeviceKind.mouse || // Enable word selection by mouse double tap
         kind == PointerDeviceKind.touch ||
         kind == PointerDeviceKind.stylus;
   }
@@ -356,11 +352,17 @@ class EditorTextSelectionGestureDetectorBuilder {
   @protected
   void onDragSelectionEnd(DragEndDetails details) {
     renderEditor!.handleDragEnd(details);
-    if (isDesktop &&
-        delegate.selectionEnabled &&
+    // Show toolbar after drag ends if there's a non-collapsed selection
+    // This works for both desktop and mobile devices
+    if (delegate.selectionEnabled &&
+        !renderEditor!.selection.isCollapsed &&
         checkSelectionToolbarShouldShow(isAdditionalAction: false)) {
-      // added to show selection copy/paste toolbar after drag to select
-      editor!.showToolbar();
+      // Show selection copy/paste toolbar after drag to select
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (renderEditor != null && !renderEditor!.selection.isCollapsed) {
+          editor!.showToolbar();
+        }
+      });
     }
   }
 

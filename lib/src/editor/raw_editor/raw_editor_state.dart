@@ -93,6 +93,9 @@ class QuillRawEditorState extends EditorState
   @override
   bool get dirty => _dirty;
   bool _dirty = false;
+  
+  // Track previous text value to detect when text actually changes (not just selection)
+  String? _previousTextValue;
 
   @override
   void insertContent(KeyboardInsertedContent content) {
@@ -822,6 +825,9 @@ class QuillRawEditorState extends EditorState
       style: widget.config.cursorStyle,
       tickerProvider: this,
     );
+    
+    // Initialize previous text value
+    _previousTextValue = controller.document.toPlainText();
 
     // Floating cursor
     _floatingCursorResetController = AnimationController(vsync: this);
@@ -1032,10 +1038,15 @@ class QuillRawEditorState extends EditorState
       return;
     }
 
-    // Hide toolbar when text changes (user typing)
-    // This is called when the controller notifies listeners, which happens
-    // when text is inserted/deleted, so we hide the toolbar
-    hideToolbar();
+    // Hide toolbar only when text actually changes (user typing), not when selection changes
+    // Check if text changed by comparing with the previous text value
+    final currentText = textEditingValue.text;
+    final previousText = _previousTextValue;
+    if (currentText != previousText) {
+      // Text changed, hide toolbar
+      hideToolbar();
+      _previousTextValue = currentText;
+    }
 
     _showCaretOnScreen();
     _cursorCont.startOrStopCursorTimerIfNeeded(_hasFocus, controller.selection);

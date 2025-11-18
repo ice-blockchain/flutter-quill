@@ -220,20 +220,19 @@ class QuillRawEditorConfig {
     // Use the editor's context to get the theme and media query, as the overlay context
     // might not have access to the theme ancestor or correct brightness
     final editorContext = state.context;
-    final theme = Theme.of(editorContext);
     final mediaQuery = MediaQuery.of(editorContext);
-    
+
     // Check if we're in dark mode
     final brightness = mediaQuery.platformBrightness;
     final isDarkMode = brightness == Brightness.dark;
-    
+
     // Create custom theme for the toolbar based on dark/light mode
     // AdaptiveTextSelectionToolbar uses canvasColor and textTheme for styling
     // On iOS, it also uses CupertinoTheme
     final isIOS = Theme.of(editorContext).platform == TargetPlatform.iOS;
-    final darkBackground = const Color(0xFF1C1C1E); // Dark gray background like iOS
-    final lightBackground = Colors.white;
-    
+    const darkBackground = Color(0xFF1C1C1E); // Dark gray background like iOS
+    const lightBackground = Colors.white;
+
     final toolbarTheme = isDarkMode
         ? ThemeData(
             platform: Theme.of(editorContext).platform,
@@ -242,14 +241,14 @@ class QuillRawEditorConfig {
             cardColor: darkBackground,
             dialogBackgroundColor: darkBackground,
             scaffoldBackgroundColor: darkBackground,
-            colorScheme: ColorScheme.dark().copyWith(
+            colorScheme: const ColorScheme.dark().copyWith(
               surface: darkBackground,
               onSurface: Colors.white,
             ),
             textTheme: Theme.of(editorContext).textTheme.apply(
-              bodyColor: Colors.white,
-              displayColor: Colors.white,
-            ),
+                  bodyColor: Colors.white,
+                  displayColor: Colors.white,
+                ),
           )
         : ThemeData(
             platform: Theme.of(editorContext).platform,
@@ -258,21 +257,21 @@ class QuillRawEditorConfig {
             cardColor: lightBackground,
             dialogBackgroundColor: lightBackground,
             scaffoldBackgroundColor: lightBackground,
-            colorScheme: ColorScheme.light().copyWith(
+            colorScheme: const ColorScheme.light().copyWith(
               surface: lightBackground,
               onSurface: Colors.black,
             ),
             textTheme: Theme.of(editorContext).textTheme.apply(
-              bodyColor: Colors.black,
-              displayColor: Colors.black,
-            ),
+                  bodyColor: Colors.black,
+                  displayColor: Colors.black,
+                ),
           );
-    
+
     Widget toolbar = AdaptiveTextSelectionToolbar.buttonItems(
       buttonItems: state.contextMenuButtonItems,
       anchors: state.contextMenuAnchors,
     );
-    
+
     // Wrap with CupertinoTheme on iOS for proper styling
     if (isIOS) {
       toolbar = CupertinoTheme(
@@ -288,7 +287,7 @@ class QuillRawEditorConfig {
         child: toolbar,
       );
     }
-    
+
     return TextFieldTapRegion(
       child: MediaQuery(
         data: mediaQuery,
