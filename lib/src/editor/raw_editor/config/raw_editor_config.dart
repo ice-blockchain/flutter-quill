@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:meta/meta.dart';
 
@@ -12,6 +13,7 @@ import '../../../editor/widgets/default_styles.dart';
 import '../../../editor/widgets/delegate.dart';
 import '../../../editor/widgets/link.dart';
 import '../../../toolbar/theme/quill_dialog_theme.dart';
+import '../../widgets/text/custom_cupertino_text_selection_toolbar_button.dart';
 import '../../widgets/text/magnifier.dart';
 import '../../widgets/text/utils/text_block_utils.dart';
 import '../builders/leading_block_builder.dart';
@@ -216,10 +218,99 @@ class QuillRawEditorConfig {
     BuildContext context,
     QuillRawEditorState state,
   ) {
-    return TextFieldTapRegion(
-      child: AdaptiveTextSelectionToolbar.buttonItems(
+    // Use the editor's context to get the theme and media query, as the overlay context
+    // might not have access to the theme ancestor or correct brightness
+    final editorContext = state.context;
+    final mediaQuery = MediaQuery.of(editorContext);
+
+    // Check if we're in dark mode
+    final brightness = mediaQuery.platformBrightness;
+    final isDarkMode = brightness == Brightness.dark;
+
+    // Create custom theme for the toolbar based on dark/light mode
+    // AdaptiveTextSelectionToolbar uses canvasColor and textTheme for styling
+    // On iOS, it also uses CupertinoTheme
+    final isIOS = Theme.of(editorContext).platform == TargetPlatform.iOS;
+    const darkBackground = Color(0xFF1C1C1E); // Dark gray background like iOS
+    const lightBackground = Colors.white;
+
+    final toolbarTheme = isDarkMode
+        ? ThemeData(
+            platform: Theme.of(editorContext).platform,
+            brightness: Brightness.dark,
+            canvasColor: darkBackground,
+            cardColor: darkBackground,
+            dialogBackgroundColor: darkBackground,
+            scaffoldBackgroundColor: darkBackground,
+            colorScheme: const ColorScheme.dark().copyWith(
+              surface: darkBackground,
+              onSurface: Colors.white,
+            ),
+            textTheme: Theme.of(editorContext).textTheme.apply(
+                  bodyColor: Colors.white,
+                  displayColor: Colors.white,
+                ),
+          )
+        : ThemeData(
+            platform: Theme.of(editorContext).platform,
+            brightness: Brightness.light,
+            canvasColor: lightBackground,
+            cardColor: lightBackground,
+            dialogBackgroundColor: lightBackground,
+            scaffoldBackgroundColor: lightBackground,
+            colorScheme: const ColorScheme.light().copyWith(
+              surface: lightBackground,
+              onSurface: Colors.black,
+            ),
+            textTheme: Theme.of(editorContext).textTheme.apply(
+                  bodyColor: Colors.black,
+                  displayColor: Colors.black,
+                ),
+          );
+
+    Widget toolbar;
+
+    if (isIOS) {
+      // For iOS, use custom buttons with smaller fontSize
+      final customButtons = state.contextMenuButtonItems.map((buttonItem) {
+        return CustomCupertinoTextSelectionToolbarButton.buttonItem(
+          buttonItem: buttonItem,
+        );
+      }).toList();
+
+      toolbar = AdaptiveTextSelectionToolbar(
+        anchors: state.contextMenuAnchors,
+        children: customButtons,
+      );
+
+      // Wrap with CupertinoTheme on iOS for proper styling
+      toolbar = CupertinoTheme(
+        data: CupertinoThemeData(
+          brightness: isDarkMode ? Brightness.dark : Brightness.light,
+          primaryColor: isDarkMode ? Colors.white : Colors.black,
+          textTheme: CupertinoTextThemeData(
+            textStyle: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ),
+        child: toolbar,
+      );
+    } else {
+      // For Android and other platforms, use the default buttonItems
+      toolbar = AdaptiveTextSelectionToolbar.buttonItems(
         buttonItems: state.contextMenuButtonItems,
         anchors: state.contextMenuAnchors,
+      );
+    }
+
+    return TextFieldTapRegion(
+      child: MediaQuery(
+        data: mediaQuery,
+        child: Theme(
+          data: toolbarTheme,
+          child: toolbar,
+        ),
       ),
     );
   }

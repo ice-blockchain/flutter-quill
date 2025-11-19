@@ -13,10 +13,8 @@ class QuillRawEditor extends StatefulWidget {
     required this.controller,
     this.dragOffsetNotifier,
     super.key,
-  })  : assert(config.maxHeight == null || config.maxHeight! > 0,
-            'maxHeight cannot be null'),
-        assert(config.minHeight == null || config.minHeight! >= 0,
-            'minHeight cannot be null'),
+  })  : assert(config.maxHeight == null || config.maxHeight! > 0, 'maxHeight cannot be null'),
+        assert(config.minHeight == null || config.minHeight! >= 0, 'minHeight cannot be null'),
         assert(
             config.maxHeight == null ||
                 config.minHeight == null ||
@@ -77,8 +75,7 @@ class QuillEditorGlyphHeights {
 
 /// Base interface for the editor state which defines contract used by
 /// various mixins.
-abstract class EditorState extends State<QuillRawEditor>
-    implements TextSelectionDelegate {
+abstract class EditorState extends State<QuillRawEditor> implements TextSelectionDelegate {
   ScrollController get scrollController;
 
   RenderEditor get renderEditor;
@@ -99,4 +96,7 @@ abstract class EditorState extends State<QuillRawEditor>
   bool showToolbar();
 
   void requestKeyboard();
+
+  /// The clipboard status notifier, used to determine if paste is enabled.
+  ClipboardStatusNotifier? get clipboardStatus;
 }

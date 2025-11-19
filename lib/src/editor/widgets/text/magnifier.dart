@@ -1,41 +1,51 @@
 import 'package:flutter/material.dart';
 
-typedef QuillMagnifierBuilder = Widget Function(Offset dragPosition);
+typedef QuillMagnifierBuilder = Widget Function(Offset dragGlobalPosition);
 
-Widget defaultQuillMagnifierBuilder(Offset dragPosition) =>
-    QuillMagnifier(dragPosition: dragPosition);
+Widget defaultQuillMagnifierBuilder(Offset dragGlobalPosition) =>
+    QuillMagnifier(dragGlobalPosition: dragGlobalPosition);
 
 class QuillMagnifier extends StatelessWidget {
-  const QuillMagnifier({required this.dragPosition,  super.key});
+  const QuillMagnifier({required this.dragGlobalPosition, super.key});
 
-  final Offset dragPosition;
+  // Global position where the text is (where the magnifier should point to)
+  final Offset dragGlobalPosition;
 
   @override
   Widget build(BuildContext context) {
-    final position = dragPosition.translate(-60, -80);
+    const magnifierSize = Size(80, 40);
+
+    // 1. This is the "pointer" location relative to the
+    //    magnifier widget's own top-left corner.
+    const focalPointOffset = Offset(0, 60);
+
+    // 2. Calculate the global top-left position for the magnifier widget
+    //    so that its "pointer" (focalPointOffset) lands
+    //    exactly on the dragGlobalPosition.
+    final magnifierGlobalPosition = dragGlobalPosition - focalPointOffset;
+
+    const borderColor = Color(0xFF2D64F6);
+
     return Positioned(
-      top: position.dy,
-      left: position.dx,
-      child: Container(
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-        ),
+      left: magnifierGlobalPosition.dx - magnifierSize.width / 2,
+      top: magnifierGlobalPosition.dy - magnifierSize.height / 2,
+      child: const IgnorePointer(
         child: RawMagnifier(
           clipBehavior: Clip.hardEdge,
           decoration: MagnifierDecoration(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            shadows: const [
-              BoxShadow(
-                color: Colors.black26,
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(3, 3), // changes position of shadow
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(25)),
+              side: BorderSide(
+                color: borderColor,
+                width: 2,
               ),
-            ],
+            ),
           ),
-          size: const Size(100, 45),
-          focalPointOffset: const Offset(5, 55),
-          magnificationScale: 1.3,
+          size: magnifierSize,
+          // 4. THE FIX: Pass the *internal* offset. This tells
+          //    RawMagnifier "this is where my pointer is".
+          focalPointOffset: focalPointOffset,
+          magnificationScale: 1.5,
         ),
       ),
     );
