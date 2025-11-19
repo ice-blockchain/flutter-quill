@@ -13,39 +13,33 @@ class QuillMagnifier extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const magnifierSize = Size(120, 60);
+    const magnifierSize = Size(80, 40);
 
     // 1. This is the "pointer" location relative to the
     //    magnifier widget's own top-left corner.
-    final focalPointOffset = Offset(
-      0,
-      magnifierSize.height,
-    );
+    const focalPointOffset = Offset(0, 60);
 
     // 2. Calculate the global top-left position for the magnifier widget
     //    so that its "pointer" (focalPointOffset) lands
     //    exactly on the dragGlobalPosition.
     final magnifierGlobalPosition = dragGlobalPosition - focalPointOffset;
 
+    const borderColor = Color(0xFF2D64F6);
+
     return Positioned(
       left: magnifierGlobalPosition.dx - magnifierSize.width / 2,
       top: magnifierGlobalPosition.dy - magnifierSize.height / 2,
-      child: IgnorePointer(
+      child: const IgnorePointer(
         child: RawMagnifier(
           clipBehavior: Clip.hardEdge,
           decoration: MagnifierDecoration(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: Colors.grey, width: 1),
-            ),
-            shadows: const [
-              BoxShadow(
-                color: Colors.black26,
-                spreadRadius: 2,
-                blurRadius: 5,
-                offset: Offset(0, 2),
+              borderRadius: BorderRadius.all(Radius.circular(25)),
+              side: BorderSide(
+                color: borderColor,
+                width: 2,
               ),
-            ],
+            ),
           ),
           size: magnifierSize,
           // 4. THE FIX: Pass the *internal* offset. This tells
