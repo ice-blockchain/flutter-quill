@@ -1311,7 +1311,7 @@ class QuillRawEditorState extends EditorState
   }
 
   @override
-  bool get liveTextInputEnabled => textEditingValue.selection.isCollapsed;
+  bool get liveTextInputEnabled => false;
 
   @override
   bool get lookUpEnabled => false;
