@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 typedef QuillMagnifierBuilder = Widget Function(Offset dragGlobalPosition);
@@ -15,37 +16,54 @@ class QuillMagnifier extends StatelessWidget {
   Widget build(BuildContext context) {
     const magnifierSize = Size(80, 40);
 
-    // 1. This is the "pointer" location relative to the
-    //    magnifier widget's own top-left corner.
+    // This is the "pointer" location relative to the
+    // magnifier widget's own top-left corner.
     const focalPointOffset = Offset(0, 60);
 
-    // 2. Calculate the global top-left position for the magnifier widget
-    //    so that its "pointer" (focalPointOffset) lands
-    //    exactly on the dragGlobalPosition.
+    // Calculate the global top-left position for the magnifier widget
+    // so that its "pointer" (focalPointOffset) lands
+    // exactly on the dragGlobalPosition.
     final magnifierGlobalPosition = dragGlobalPosition - focalPointOffset;
 
-    const borderColor = Color(0xFF2D64F6);
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
 
     return Positioned(
       left: magnifierGlobalPosition.dx - magnifierSize.width / 2,
       top: magnifierGlobalPosition.dy - magnifierSize.height / 2,
-      child: const IgnorePointer(
+      child: IgnorePointer(
         child: RawMagnifier(
           clipBehavior: Clip.hardEdge,
           decoration: MagnifierDecoration(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(25)),
-              side: BorderSide(
-                color: borderColor,
-                width: 2,
+              borderRadius: BorderRadius.all(
+                Radius.circular(isAndroid ? 40 : 25),
               ),
+              side: isAndroid
+                  ? BorderSide.none
+                  : const BorderSide(
+                      color: Color(0xFF2D64F6),
+                      width: 2,
+                    ),
             ),
+            shadows: isAndroid
+                ? const [
+                    BoxShadow(
+                      blurRadius: 1.5,
+                      offset: Offset(0, 2),
+                      spreadRadius: 0.75,
+                      color: Color.fromARGB(25, 0, 0, 0),
+                    ),
+                  ]
+                : null,
           ),
-          size: magnifierSize,
-          // 4. THE FIX: Pass the *internal* offset. This tells
-          //    RawMagnifier "this is where my pointer is".
+          size: isAndroid ? const Size(77.37, 37.9) : magnifierSize,
           focalPointOffset: focalPointOffset,
-          magnificationScale: 1.5,
+          magnificationScale: isAndroid ? 1.25 : 1.5,
+          child: isAndroid
+              ? const ColoredBox(
+                  color: Color.fromARGB(8, 158, 158, 158),
+                )
+              : null,
         ),
       ),
     );
