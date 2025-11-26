@@ -243,7 +243,7 @@ class EditorTextSelectionOverlay {
     });
 
     // Insert the hiding toolbar at the same position
-    Overlay.of(this.context, rootOverlay: true, debugRequiredFor: debugRequiredFor)
+    Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor)
         .insert(_hidingToolbar!);
 
     // Remove the old toolbar immediately (it's replaced by the hiding one)
@@ -414,7 +414,18 @@ class EditorTextSelectionOverlay {
 
   /// Final cleanup.
   void dispose() {
-    hide();
+    if (_handles != null) {
+      _handles![0].remove();
+      _handles![1].remove();
+      _handles = null;
+    }
+    if (toolbar != null) {
+      toolbar!.remove();
+      toolbar = null;
+      dragOffsetNotifier?.removeListener(_dragOffsetListener);
+    }
+    _hidingToolbar?.remove();
+    _hidingToolbar = null;
   }
 
   /// Builds the handles by inserting them into the [context]'s overlay.
@@ -1240,8 +1251,9 @@ class _HidingToolbarState extends State<_HidingToolbar> with SingleTickerProvide
       curve: Curves.easeInOut,
     );
     // Start from full height and animate to 0
-    _controller.value = 1.0;
-    _controller.reverse();
+    _controller
+      ..value = 1.0
+      ..reverse();
   }
 
   @override

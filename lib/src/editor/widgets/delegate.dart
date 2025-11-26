@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../common/utils/platform.dart';
 import '../../document/attribute.dart';
 import '../../document/nodes/leaf.dart';
 import '../editor.dart';
@@ -335,10 +336,21 @@ class EditorTextSelectionGestureDetectorBuilder {
   void onDragSelectionUpdate(
       //DragStartDetails startDetails,
       DragUpdateDetails updateDetails) {
-    renderEditor!.extendSelection(
-      updateDetails.globalPosition,
-      cause: SelectionChangedCause.drag,
-    );
+    // On Android, when selection is collapsed (cursor only), move cursor precisely
+    // instead of creating a selection. On iOS, always extend selection.
+    final isCollapsed = renderEditor!.selection.isCollapsed;
+
+    if (isAndroidApp && isCollapsed) {
+      renderEditor!.selectPositionAt(
+        from: updateDetails.globalPosition,
+        cause: SelectionChangedCause.drag,
+      );
+    } else {
+      renderEditor!.extendSelection(
+        updateDetails.globalPosition,
+        cause: SelectionChangedCause.drag,
+      );
+    }
   }
 
   /// Handler for [EditorTextSelectionGestureDetector.onDragSelectionEnd].

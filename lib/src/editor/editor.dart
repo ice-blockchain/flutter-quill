@@ -442,11 +442,20 @@ class _QuillEditorSelectionGestureDetectorBuilder
         cause: SelectionChangedCause.longPress,
       );
     } else {
-      renderEditor!.selectWordsInRange(
-        details.globalPosition - details.offsetFromOrigin,
-        details.globalPosition,
-        SelectionChangedCause.longPress,
-      );
+      // On Android, when selection is collapsed, move cursor precisely instead of selecting words
+      if (isAndroidApp && renderEditor!.selection.isCollapsed) {
+        renderEditor!.selectPositionAt(
+          from: details.globalPosition,
+          cause: SelectionChangedCause.longPress,
+        );
+      } else {
+        // Select words when selection is not collapsed or on other platforms
+        renderEditor!.selectWordsInRange(
+          details.globalPosition - details.offsetFromOrigin,
+          details.globalPosition,
+          SelectionChangedCause.longPress,
+        );
+      }
     }
   }
 
@@ -566,9 +575,11 @@ class _QuillEditorSelectionGestureDetectorBuilder
               break;
             case PointerDeviceKind.touch:
             case PointerDeviceKind.unknown:
-              // On Android/iOS, when the field has focus, single tap should show toolbar
+              // On iOS, when the field has focus, single tap should show toolbar
               // but NOT select the word (word selection only happens on double tap)
+              // iOS respects detectWordBoundary setting
               if (_detectWordBoundary) {
+                // iOS: Use word boundary detection when enabled
                 // Capture cursor position before selection change
                 final rawEditorState = editor as QuillRawEditorState?;
                 final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
@@ -602,13 +613,12 @@ class _QuillEditorSelectionGestureDetectorBuilder
                   });
                 }
               } else {
+                // iOS: Use precise cursor positioning when word boundary detection is disabled
                 // Capture cursor position before selection change
                 final rawEditorState = editor as QuillRawEditorState?;
                 final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
 
-                renderEditor!
-                  ..selectPosition(cause: SelectionChangedCause.tap)
-                  ..onSelectionCompleted();
+                renderEditor!.onSelectionCompleted();
                 // Show toolbar on single tap when field has focus
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
@@ -641,9 +651,38 @@ class _QuillEditorSelectionGestureDetectorBuilder
               break;
           }
         } else {
-          renderEditor!
-            ..selectPosition(cause: SelectionChangedCause.tap)
-            ..onSelectionCompleted();
+          // Android and other non-Apple/non-Desktop platforms
+          // Always use precise cursor positioning for character-level movement
+          // Capture cursor position before selection change
+          final rawEditorState = editor as QuillRawEditorState?;
+          final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
+
+          renderEditor!.onSelectionCompleted();
+          // Show toolbar on single tap when field has focus
+          // Only show if cursor position matches previous position (same position tapped)
+          // On second tap when text is empty, show toolbar even if previousCursorOffset is null
+          if (renderEditor!._hasFocus) {
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+                final currentOffset = renderEditor!.selection.extentOffset;
+                // Only show toolbar if cursor position matches previous position
+                // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
+                // it matches the previous cursor position, show toolbar
+                // Special case: if document is empty and cursor is at 0, show toolbar on second tap
+                final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
+                final shouldShow = rawEditorState != null &&
+                    cursorOffsetBeforeTap != null &&
+                    currentOffset == cursorOffsetBeforeTap &&
+                    (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
+                        (isEmpty &&
+                            currentOffset == 0 &&
+                            rawEditorState.previousCursorOffset == null));
+                if (shouldShow) {
+                  editor!.showToolbar();
+                }
+              }
+            });
+          }
         }
       }
     } finally {
@@ -690,6 +729,12 @@ class _QuillEditorSelectionGestureDetectorBuilder
           from: details.globalPosition,
           cause: SelectionChangedCause.longPress,
         );
+      } else if (isAndroidApp) {
+        renderEditor!.selectPositionAt(
+          from: details.globalPosition,
+          cause: SelectionChangedCause.longPress,
+        );
+        Feedback.forLongPress(_state.context);
       } else {
         renderEditor!.selectWord(SelectionChangedCause.longPress);
         Feedback.forLongPress(_state.context);
@@ -998,7 +1043,9 @@ class RenderEditor extends RenderEditableContainerBox
       cause: SelectionChangedCause.drag,
     );
 
-    if (newSelection == null) return;
+    if (newSelection == null) {
+      return;
+    }
     // Make sure to remember the origin for extend selection.
     _extendSelectionOrigin = newSelection;
   }
@@ -1034,7 +1081,8 @@ class RenderEditor extends RenderEditableContainerBox
   ) {
     final focusingEmpty =
         nextSelection.baseOffset == 0 && nextSelection.extentOffset == 0 && !_hasFocus;
-    if (nextSelection == selection && cause != SelectionChangedCause.keyboard && !focusingEmpty) {
+    final isSameSelection = nextSelection == selection;
+    if (isSameSelection && cause != SelectionChangedCause.keyboard && !focusingEmpty) {
       return;
     }
     onSelectionChanged(nextSelection, cause);
@@ -1272,10 +1320,11 @@ class RenderEditor extends RenderEditableContainerBox
     final parentData = child.parentData as BoxParentData;
     final localOffset = local - parentData.offset;
     final localPosition = child.getPositionForOffset(localOffset);
-    return TextPosition(
+    final result = TextPosition(
       offset: localPosition.offset + child.container.offset,
       affinity: localPosition.affinity,
     );
+    return result;
   }
 
   /// Returns the y-offset of the editor at which [selection] is visible.
