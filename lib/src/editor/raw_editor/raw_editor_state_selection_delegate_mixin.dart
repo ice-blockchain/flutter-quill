@@ -115,10 +115,14 @@ mixin RawEditorStateSelectionDelegateMixin on EditorState implements TextSelecti
 
   @override
   bool get pasteEnabled {
-    if (widget.config.selectionCtrls is! TextSelectionHandleControls) {
-      return widget.config.contextMenuBuilder != null && !widget.config.readOnly;
+    // Paste should never be enabled in read-only mode
+    if (widget.config.readOnly) {
+      return false;
     }
-    return !widget.config.readOnly && (clipboardStatus?.value == ClipboardStatus.pasteable);
+    if (widget.config.selectionCtrls is! TextSelectionHandleControls) {
+      return widget.config.contextMenuBuilder != null;
+    }
+    return clipboardStatus?.value == ClipboardStatus.pasteable;
   }
 
   @override

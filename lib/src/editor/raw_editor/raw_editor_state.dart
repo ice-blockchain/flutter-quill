@@ -167,10 +167,38 @@ class QuillRawEditorState extends EditorState
       extentOffset: documentLength,
     );
 
-    controller.updateSelection(newSelection, ChangeSource.local);
-
     if (cause == SelectionChangedCause.toolbar) {
+      // Update the selection through the controller
+      controller.updateSelection(newSelection, ChangeSource.local);
+
+      // Ensure RenderEditor's selection is synced by calling setSelection directly
+      // This ensures tap-outside will work correctly
+      renderEditor.setSelection(newSelection);
+
+      // Update selection overlay handles visibility
+      _selectionOverlay?.handlesVisible = _shouldShowSelectionHandles();
+
       bringIntoView(newSelection.extent);
+
+      // Allow the selection to get updated before trying to update the toolbar.
+      // This matches the exact pattern used in double-tap word selection.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        // Check if widget is still mounted before accessing context
+        if (!mounted) {
+          return;
+        }
+
+        // Update the selection overlay with the new selection
+        _selectionOverlay?.update(textEditingValue);
+
+        // Show/refresh the toolbar to reflect the new selection state.
+        // This matches the behavior of double-tap word selection - always show toolbar
+        // after selection changes from collapsed to non-collapsed.
+        showToolbar();
+      });
+    } else {
+      // For non-toolbar causes, use the standard update path
+      controller.updateSelection(newSelection, ChangeSource.local);
     }
   }
 
@@ -297,6 +325,23 @@ class QuillRawEditorState extends EditorState
   }
 
   void _defaultOnTapOutside(PointerDownEvent event) {
+    // Collapse selection when tapping outside if there's a non-collapsed selection
+    if (!controller.selection.isCollapsed) {
+      final collapsedSelection = TextSelection.collapsed(
+        offset: controller.selection.end,
+      );
+      // Skip keyboard request to prevent keyboard from showing when collapsing selection
+      controller.skipRequestKeyboard = true;
+      // Update selection - this will trigger listeners but skipRequestKeyboard prevents keyboard
+      controller
+        ..updateSelection(collapsedSelection, ChangeSource.local)
+        ..skipRequestKeyboard = false;
+      // Sync RenderEditor's selection
+      renderEditor.setSelection(collapsedSelection);
+      // Hide toolbar and handles when selection is collapsed
+      hideToolbar();
+    }
+
     /// The focus dropping behavior is only present on desktop platforms
     /// and mobile browsers.
     switch (defaultTargetPlatform) {
@@ -1085,17 +1130,18 @@ class QuillRawEditorState extends EditorState
 
   void _updateOrDisposeSelectionOverlayIfNeeded() {
     if (_selectionOverlay != null) {
-      if (!_hasFocus) {
+      if (!_hasFocus || !mounted) {
         _selectionOverlay!.dispose();
         _selectionOverlay = null;
       } else if (textEditingValue.selection.isCollapsed && _selectionOverlay!.toolbar == null) {
         // Only dispose the selection overlay when selection is collapsed and no toolbar is shown
         _selectionOverlay!.dispose();
         _selectionOverlay = null;
-      } else {
+      } else if (mounted) {
+        // Only update if widget is still mounted
         _selectionOverlay!.update(textEditingValue);
       }
-    } else if (_hasFocus) {
+    } else if (_hasFocus && mounted) {
       _selectionOverlay = EditorTextSelectionOverlay(
         value: textEditingValue,
         context: context,
@@ -1321,7 +1367,4 @@ class QuillRawEditorState extends EditorState
 
   @override
   bool get shareEnabled => false;
-
-  @override
-  bool get pasteEnabled => true;
 }
