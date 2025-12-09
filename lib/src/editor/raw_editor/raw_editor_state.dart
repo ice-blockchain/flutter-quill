@@ -326,7 +326,8 @@ class QuillRawEditorState extends EditorState
 
   void _defaultOnTapOutside(PointerDownEvent event) {
     // Collapse selection when tapping outside if there's a non-collapsed selection
-    if (!controller.selection.isCollapsed) {
+    // Skip collapsing if selection handles are visible (user might be interacting with them)
+    if (!controller.selection.isCollapsed && _selectionOverlay?.handlesVisible != true) {
       final collapsedSelection = TextSelection.collapsed(
         offset: controller.selection.end,
       );
