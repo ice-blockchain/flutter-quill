@@ -607,7 +607,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                                   currentOffset == 0 &&
                                   rawEditorState.previousCursorOffset == null));
                       if (shouldShow) {
-                        editor!.showToolbar();
+                        // Toggle toolbar: hide if visible, show if hidden
+                        final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        if (isToolbarVisible) {
+                          editor!.hideToolbar();
+                        } else {
+                          editor!.showToolbar();
+                        }
                       }
                     }
                   });
@@ -639,7 +645,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                                   currentOffset == 0 &&
                                   rawEditorState.previousCursorOffset == null));
                       if (shouldShow) {
-                        editor!.showToolbar();
+                        // Toggle toolbar: hide if visible, show if hidden
+                        final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        if (isToolbarVisible) {
+                          editor!.hideToolbar();
+                        } else {
+                          editor!.showToolbar();
+                        }
                       }
                     }
                   });
@@ -678,7 +690,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                             currentOffset == 0 &&
                             rawEditorState.previousCursorOffset == null));
                 if (shouldShow) {
-                  editor!.showToolbar();
+                  // Toggle toolbar: hide if visible, show if hidden
+                  final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                  if (isToolbarVisible) {
+                    editor!.hideToolbar();
+                  } else {
+                    editor!.showToolbar();
+                  }
                 }
               }
             });
