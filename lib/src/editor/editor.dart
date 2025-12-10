@@ -585,7 +585,10 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
 
                 renderEditor!
-                  ..selectWordEdge(SelectionChangedCause.tap)
+                  ..selectPositionAt(
+                    from: details.globalPosition,
+                    cause: SelectionChangedCause.tap,
+                  )
                   ..onSelectionCompleted();
                 // Show toolbar on single tap when field has focus (like Flutter TextField)
                 // Only show if cursor position matches previous position (same position tapped)
@@ -625,7 +628,12 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 final rawEditorState = editor as QuillRawEditorState?;
                 final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
 
-                renderEditor!.onSelectionCompleted();
+                renderEditor!
+                  ..selectPositionAt(
+                    from: details.globalPosition,
+                    cause: SelectionChangedCause.tap,
+                  )
+                  ..onSelectionCompleted();
                 // Show toolbar on single tap when field has focus
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
