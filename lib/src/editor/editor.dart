@@ -608,7 +608,8 @@ class _QuillEditorSelectionGestureDetectorBuilder
                                   rawEditorState.previousCursorOffset == null));
                       if (shouldShow) {
                         // Toggle toolbar: hide if visible, show if hidden
-                        final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        final isToolbarVisible =
+                            (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
                         if (isToolbarVisible) {
                           editor!.hideToolbar();
                         } else {
@@ -646,7 +647,8 @@ class _QuillEditorSelectionGestureDetectorBuilder
                                   rawEditorState.previousCursorOffset == null));
                       if (shouldShow) {
                         // Toggle toolbar: hide if visible, show if hidden
-                        final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        final isToolbarVisible =
+                            (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
                         if (isToolbarVisible) {
                           editor!.hideToolbar();
                         } else {
@@ -669,7 +671,12 @@ class _QuillEditorSelectionGestureDetectorBuilder
           final rawEditorState = editor as QuillRawEditorState?;
           final cursorOffsetBeforeTap = renderEditor?.selection.extentOffset;
 
-          renderEditor!.onSelectionCompleted();
+          renderEditor!
+            ..selectPositionAt(
+              from: details.globalPosition,
+              cause: SelectionChangedCause.tap,
+            )
+            ..onSelectionCompleted();
           // Show toolbar on single tap when field has focus
           // Only show if cursor position matches previous position (same position tapped)
           // On second tap when text is empty, show toolbar even if previousCursorOffset is null
@@ -691,7 +698,8 @@ class _QuillEditorSelectionGestureDetectorBuilder
                             rawEditorState.previousCursorOffset == null));
                 if (shouldShow) {
                   // Toggle toolbar: hide if visible, show if hidden
-                  final isToolbarVisible = (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                  final isToolbarVisible =
+                      (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
                   if (isToolbarVisible) {
                     editor!.hideToolbar();
                   } else {
