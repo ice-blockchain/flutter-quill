@@ -413,7 +413,10 @@ class _QuillEditorSelectionGestureDetectorBuilder
   @override
   void onForcePressStart(ForcePressDetails details) {
     super.onForcePressStart(details);
-    if (delegate.selectionEnabled && shouldShowSelectionToolbar) {
+    if (delegate.selectionEnabled &&
+        shouldShowSelectionToolbar &&
+        editor != null &&
+        (editor as State).mounted) {
       editor!.showToolbar();
     }
   }
@@ -521,11 +524,18 @@ class _QuillEditorSelectionGestureDetectorBuilder
         tapPosition.offset >= currentSelection.start &&
         tapPosition.offset < currentSelection.end;
 
+    // Store whether there was a non-collapsed selection before the tap
+    // This is used to determine if we should hide the toolbar when tapping on unselected text
+    final hadNonCollapsedSelection = currentSelection != null && !currentSelection.isCollapsed;
+
     // If tapping on selected text, show toolbar without changing selection
     // (always show for selected text, position doesn't matter)
     if (isTapOnSelectedText) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (renderEditor != null && !renderEditor!.selection.isCollapsed) {
+        if (renderEditor != null &&
+            !renderEditor!.selection.isCollapsed &&
+            editor != null &&
+            (editor as State).mounted) {
           editor!.showToolbar();
         }
       });
@@ -545,7 +555,10 @@ class _QuillEditorSelectionGestureDetectorBuilder
       SchedulerBinding.instance.addPostFrameCallback((_) {
         // Don't hide toolbar if there's a non-collapsed selection
         // The toolbar should remain visible when text is selected
-        if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+        if (renderEditor != null &&
+            renderEditor!.selection.isCollapsed &&
+            editor != null &&
+            (editor as State).mounted) {
           editor!.hideToolbar();
         }
       });
@@ -593,9 +606,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 // Show toolbar on single tap when field has focus (like Flutter TextField)
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
-                if (renderEditor!._hasFocus) {
+                // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+                if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
-                    if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+                    if (renderEditor != null &&
+                        renderEditor!.selection.isCollapsed &&
+                        editor != null &&
+                        (editor as State).mounted) {
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
@@ -637,9 +654,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 // Show toolbar on single tap when field has focus
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
-                if (renderEditor!._hasFocus) {
+                // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+                if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
-                    if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+                    if (renderEditor != null &&
+                        renderEditor!.selection.isCollapsed &&
+                        editor != null &&
+                        (editor as State).mounted) {
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
@@ -688,9 +709,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
           // Show toolbar on single tap when field has focus
           // Only show if cursor position matches previous position (same position tapped)
           // On second tap when text is empty, show toolbar even if previousCursorOffset is null
-          if (renderEditor!._hasFocus) {
+          // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+          if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
             SchedulerBinding.instance.addPostFrameCallback((_) {
-              if (renderEditor != null && renderEditor!.selection.isCollapsed) {
+              if (renderEditor != null &&
+                  renderEditor!.selection.isCollapsed &&
+                  editor != null &&
+                  (editor as State).mounted) {
                 final currentOffset = renderEditor!.selection.extentOffset;
                 // Only show toolbar if cursor position matches previous position
                 // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
@@ -718,6 +743,20 @@ class _QuillEditorSelectionGestureDetectorBuilder
             });
           }
         }
+      }
+
+      // If there was a non-collapsed selection and we tapped on unselected text,
+      // ensure the toolbar is hidden after selection is collapsed
+      // This runs after all selection changes to override any toolbar showing logic
+      if (hadNonCollapsedSelection) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (renderEditor != null &&
+              renderEditor!.selection.isCollapsed &&
+              editor != null &&
+              (editor as State).mounted) {
+            editor!.hideToolbar();
+          }
+        });
       }
     } finally {
       _state._requestKeyboard();

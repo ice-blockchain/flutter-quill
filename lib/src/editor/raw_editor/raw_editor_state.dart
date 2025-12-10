@@ -154,6 +154,10 @@ class QuillRawEditorState extends EditorState
 
     if (await controller.clipboardPaste()) {
       bringIntoView(textEditingValue.selection.extent);
+      // Hide toolbar after successful paste
+      if (mounted && _selectionOverlay?.toolbar != null) {
+        hideToolbar();
+      }
       return;
     }
   }
@@ -565,10 +569,13 @@ class QuillRawEditorState extends EditorState
 
     // Hide toolbar when cursor moves (not due to drag) and toolbar is currently shown
     // This matches Flutter TextField behavior: toolbar hides when cursor moves via selection
+    // Also hide toolbar when selection collapses from non-collapsed to collapsed
+    // (e.g., when user taps on unselected text to deselect)
+    final selectionCollapsed = oldSelection.isCollapsed == false && selection.isCollapsed == true;
     if (cause != SelectionChangedCause.drag &&
         _selectionOverlay?.toolbar != null &&
         selection.isCollapsed &&
-        oldCursorOffset != newCursorOffset) {
+        (oldCursorOffset != newCursorOffset || selectionCollapsed)) {
       hideToolbar();
     }
 
@@ -1041,6 +1048,10 @@ class QuillRawEditorState extends EditorState
 
   void _updateSelectionOverlayForScroll() {
     _selectionOverlay?.updateForScroll();
+    // Hide toolbar when scrolling
+    if (_selectionOverlay?.toolbar != null && mounted) {
+      hideToolbar();
+    }
   }
 
   void _onComposingRangeChanged() {
