@@ -607,19 +607,22 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
                 // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+                // In read-only mode, don't auto-show toolbar on tap when selection is collapsed
                 if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
                     if (renderEditor != null &&
                         renderEditor!.selection.isCollapsed &&
                         editor != null &&
                         (editor as State).mounted) {
+                      final isReadOnly = rawEditorState?.widget.config.readOnly ?? false;
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
                       // it matches the previous cursor position, show toolbar
                       // Special case: if document is empty and cursor is at 0, show toolbar on second tap
                       final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
-                      final shouldShow = rawEditorState != null &&
+                      final shouldShow = !isReadOnly && // Don't auto-show in read-only mode
+                          rawEditorState != null &&
                           cursorOffsetBeforeTap != null &&
                           currentOffset == cursorOffsetBeforeTap &&
                           (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
@@ -634,6 +637,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                           editor!.hideToolbar();
                         } else {
                           editor!.showToolbar();
+                        }
+                      } else if (isReadOnly) {
+                        // In read-only mode, allow dismissing toolbar on tap
+                        final isToolbarVisible =
+                            (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        if (isToolbarVisible) {
+                          editor!.hideToolbar();
                         }
                       }
                     }
@@ -655,19 +665,22 @@ class _QuillEditorSelectionGestureDetectorBuilder
                 // Only show if cursor position matches previous position (same position tapped)
                 // On second tap when text is empty, show toolbar even if previousCursorOffset is null
                 // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+                // In read-only mode, don't auto-show toolbar on tap when selection is collapsed
                 if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
                   SchedulerBinding.instance.addPostFrameCallback((_) {
                     if (renderEditor != null &&
                         renderEditor!.selection.isCollapsed &&
                         editor != null &&
                         (editor as State).mounted) {
+                      final isReadOnly = rawEditorState?.widget.config.readOnly ?? false;
                       final currentOffset = renderEditor!.selection.extentOffset;
                       // Only show toolbar if cursor position matches previous position
                       // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
                       // it matches the previous cursor position, show toolbar
                       // Special case: if document is empty and cursor is at 0, show toolbar on second tap
                       final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
-                      final shouldShow = rawEditorState != null &&
+                      final shouldShow = !isReadOnly && // Don't auto-show in read-only mode
+                          rawEditorState != null &&
                           cursorOffsetBeforeTap != null &&
                           currentOffset == cursorOffsetBeforeTap &&
                           (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
@@ -682,6 +695,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                           editor!.hideToolbar();
                         } else {
                           editor!.showToolbar();
+                        }
+                      } else if (isReadOnly) {
+                        // In read-only mode, allow dismissing toolbar on tap
+                        final isToolbarVisible =
+                            (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                        if (isToolbarVisible) {
+                          editor!.hideToolbar();
                         }
                       }
                     }
@@ -710,19 +730,22 @@ class _QuillEditorSelectionGestureDetectorBuilder
           // Only show if cursor position matches previous position (same position tapped)
           // On second tap when text is empty, show toolbar even if previousCursorOffset is null
           // Don't show toolbar if we had a non-collapsed selection (user tapped on unselected text to deselect)
+          // In read-only mode, don't auto-show toolbar on tap when selection is collapsed
           if (renderEditor!._hasFocus && !hadNonCollapsedSelection) {
             SchedulerBinding.instance.addPostFrameCallback((_) {
               if (renderEditor != null &&
                   renderEditor!.selection.isCollapsed &&
                   editor != null &&
                   (editor as State).mounted) {
+                final isReadOnly = rawEditorState?.widget.config.readOnly ?? false;
                 final currentOffset = renderEditor!.selection.extentOffset;
                 // Only show toolbar if cursor position matches previous position
                 // If cursor didn't move (currentOffset == cursorOffsetBeforeTap) and
                 // it matches the previous cursor position, show toolbar
                 // Special case: if document is empty and cursor is at 0, show toolbar on second tap
                 final isEmpty = rawEditorState?.controller.document.isEmpty() ?? false;
-                final shouldShow = rawEditorState != null &&
+                final shouldShow = !isReadOnly && // Don't auto-show in read-only mode
+                    rawEditorState != null &&
                     cursorOffsetBeforeTap != null &&
                     currentOffset == cursorOffsetBeforeTap &&
                     (cursorOffsetBeforeTap == rawEditorState.previousCursorOffset ||
@@ -737,6 +760,13 @@ class _QuillEditorSelectionGestureDetectorBuilder
                     editor!.hideToolbar();
                   } else {
                     editor!.showToolbar();
+                  }
+                } else if (isReadOnly) {
+                  // In read-only mode, allow dismissing toolbar on tap
+                  final isToolbarVisible =
+                      (editor as QuillRawEditorState?)?.selectionOverlay?.toolbar != null;
+                  if (isToolbarVisible) {
+                    editor!.hideToolbar();
                   }
                 }
               }

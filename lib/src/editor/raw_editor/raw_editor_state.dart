@@ -329,6 +329,34 @@ class QuillRawEditorState extends EditorState
   }
 
   void _defaultOnTapOutside(PointerDownEvent event) {
+    // Hide toolbar when tapping outside, regardless of selection state
+    // But skip if handles are visible (user might be dragging selection handles)
+    if (_selectionOverlay?.toolbar != null &&
+        mounted &&
+        _selectionOverlay?.handlesVisible != true) {
+      // On Android, use post-frame callback to avoid race conditions with selection changes
+      // that might cause double toolbars
+      if (defaultTargetPlatform == TargetPlatform.android) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          // Double-check mounted state and overlay state before hiding
+          // Use try-catch to handle cases where context becomes invalid
+          if (mounted &&
+              _selectionOverlay != null &&
+              _selectionOverlay!.toolbar != null &&
+              _selectionOverlay!.handlesVisible != true) {
+            try {
+              hideToolbar();
+            } catch (e) {
+              // Context might be invalid if widget was unmounted
+              // Silently ignore the error
+            }
+          }
+        });
+      } else {
+        hideToolbar();
+      }
+    }
+
     // Collapse selection when tapping outside if there's a non-collapsed selection
     // Skip collapsing if selection handles are visible (user might be interacting with them)
     if (!controller.selection.isCollapsed && _selectionOverlay?.handlesVisible != true) {
@@ -343,8 +371,6 @@ class QuillRawEditorState extends EditorState
         ..skipRequestKeyboard = false;
       // Sync RenderEditor's selection
       renderEditor.setSelection(collapsedSelection);
-      // Hide toolbar and handles when selection is collapsed
-      hideToolbar();
     }
 
     /// The focus dropping behavior is only present on desktop platforms
@@ -1145,8 +1171,11 @@ class QuillRawEditorState extends EditorState
       if (!_hasFocus || !mounted) {
         _selectionOverlay!.dispose();
         _selectionOverlay = null;
-      } else if (textEditingValue.selection.isCollapsed && _selectionOverlay!.toolbar == null) {
-        // Only dispose the selection overlay when selection is collapsed and no toolbar is shown
+      } else if (textEditingValue.selection.isCollapsed &&
+          _selectionOverlay!.toolbar == null &&
+          !_selectionOverlay!.handlesVisible) {
+        // Only dispose the selection overlay when selection is collapsed, no toolbar is shown,
+        // and handles are not visible (not during drag)
         _selectionOverlay!.dispose();
         _selectionOverlay = null;
       } else if (mounted) {
