@@ -190,6 +190,10 @@ class EditorTextSelectionOverlay {
   /// A copy/paste toolbar that is currently hiding (animating out).
   OverlayEntry? _hidingToolbar;
 
+  /// Flag to track if we're currently in the process of showing a toolbar
+  /// This prevents multiple simultaneous toolbar show operations that could cause double toolbars
+  bool _isShowingToolbar = false;
+
   TextSelection get _selection => value.selection;
 
   void setHandlesVisible(bool visible) {
@@ -227,6 +231,13 @@ class EditorTextSelectionOverlay {
 
     dragOffsetNotifier?.removeListener(_dragOffsetListener);
 
+    // Remove any existing hiding toolbar to prevent multiple hiding toolbars
+    // This can happen on Android when multiple post-frame callbacks race
+    if (_hidingToolbar != null) {
+      _hidingToolbar!.remove();
+      _hidingToolbar = null;
+    }
+
     // Move current toolbar to hiding state and create a new overlay entry
     // that will animate out
     final currentToolbar = toolbar;
@@ -249,52 +260,93 @@ class EditorTextSelectionOverlay {
     // Remove the old toolbar immediately (it's replaced by the hiding one)
     currentToolbar?.remove();
 
-    // Remove hiding toolbar after animation completes (unawaited)
-    unawaited(
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _hidingToolbar?.remove();
-        _hidingToolbar = null;
-      }),
-    );
+    _hidingToolbar?.remove();
+    _hidingToolbar = null;
   }
 
   /// Shows the toolbar by inserting it into the [context]'s overlay.
   void showToolbar() {
+    // Remove any existing hiding toolbar first to prevent double toolbars
+    // This is especially important on Android where multiple post-frame callbacks might race
+    if (_hidingToolbar != null) {
+      _hidingToolbar!.remove();
+      _hidingToolbar = null;
+    }
+
+    // If toolbar already exists, just update it instead of creating a new one
+    // This prevents double toolbars when showToolbar() is called multiple times quickly
+    if (toolbar != null) {
+      // Toolbar already exists, just update it
+      toolbar?.markNeedsBuild();
+      return;
+    }
+
+    // If we're already in the process of showing a toolbar, don't start another one
+    // This prevents race conditions on Android where multiple post-frame callbacks might execute
+    if (_isShowingToolbar) {
+      return;
+    }
+
     // Always hide existing toolbar first to trigger animation
     // This ensures the toolbar always animates, even if cursor hasn't moved
     final hadExistingToolbar = toolbar != null;
     if (hadExistingToolbar) {
       hideToolbar();
       // Wait a frame to ensure hide animation starts before showing new one
+      _isShowingToolbar = true;
       SchedulerBinding.instance.addPostFrameCallback((_) {
         _showNewToolbar();
       });
     } else {
+      _isShowingToolbar = true;
       _showNewToolbar();
     }
   }
 
   void _showNewToolbar() {
-    if (contextMenuBuilder == null) return;
-    dragOffsetNotifier?.addListener(_dragOffsetListener);
-
-    // Create new toolbar instance (showing animation)
-    // This creates a fresh animation every time, restarting the show animation
-    toolbar = OverlayEntry(builder: (context) {
-      // when the dragOffsetNotifier is not null and the value is not null
-      // the magnifier is being shown, so we don't want to show the context menu
-      if (dragOffsetNotifier?.value != null) {
-        return Container();
+    try {
+      if (contextMenuBuilder == null) {
+        _isShowingToolbar = false;
+        return;
       }
-      return _ShowingToolbar(
-        child: contextMenuBuilder!(context),
-      );
-    });
-    Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor).insert(toolbar!);
 
-    // make sure handles are visible as well
-    if (_handles == null) {
-      showHandles();
+      // Remove any existing hiding toolbar to prevent double toolbars
+      // This is especially important on Android where multiple post-frame callbacks might race
+      if (_hidingToolbar != null) {
+        _hidingToolbar!.remove();
+        _hidingToolbar = null;
+      }
+
+      // If a toolbar already exists, don't create a new one
+      // This prevents double toolbars when showToolbar() is called multiple times quickly
+      if (toolbar != null) {
+        _isShowingToolbar = false;
+        return;
+      }
+
+      dragOffsetNotifier?.addListener(_dragOffsetListener);
+
+      // Create new toolbar instance (showing animation)
+      // This creates a fresh animation every time, restarting the show animation
+      toolbar = OverlayEntry(builder: (context) {
+        // when the dragOffsetNotifier is not null and the value is not null
+        // the magnifier is being shown, so we don't want to show the context menu
+        if (dragOffsetNotifier?.value != null) {
+          return Container();
+        }
+        return _ShowingToolbar(
+          child: contextMenuBuilder!(context),
+        );
+      });
+      Overlay.of(context, rootOverlay: true, debugRequiredFor: debugRequiredFor).insert(toolbar!);
+
+      // make sure handles are visible as well
+      if (_handles == null) {
+        showHandles();
+      }
+    } finally {
+      // Always reset the flag, even if there was an error
+      _isShowingToolbar = false;
     }
   }
 

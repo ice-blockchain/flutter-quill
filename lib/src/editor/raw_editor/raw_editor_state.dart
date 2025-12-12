@@ -339,6 +339,7 @@ class QuillRawEditorState extends EditorState
       if (defaultTargetPlatform == TargetPlatform.android) {
         SchedulerBinding.instance.addPostFrameCallback((_) {
           // Double-check mounted state and overlay state before hiding
+          // Also check if there's a hiding toolbar that needs to be cleaned up
           // Use try-catch to handle cases where context becomes invalid
           if (mounted &&
               _selectionOverlay != null &&

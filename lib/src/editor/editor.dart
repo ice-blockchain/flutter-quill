@@ -542,6 +542,44 @@ class _QuillEditorSelectionGestureDetectorBuilder
       return;
     }
 
+    // If there's a non-collapsed selection and we're tapping on empty space or unselected text,
+    // collapse the selection first (especially important on mobile for single-tap deselection)
+    // Note: tapPosition != null implies renderEditor != null, and currentSelection != null is already checked via hadNonCollapsedSelection
+    if (hadNonCollapsedSelection && tapPosition != null) {
+      final rawEditorState = editor as QuillRawEditorState?;
+      final documentLength = rawEditorState?.controller.document.length ?? 0;
+      // Check if tap is on empty space (beyond document end) or on unselected text
+      // currentSelection is guaranteed to be non-null because hadNonCollapsedSelection is true
+      final isTapOnEmptySpace = tapPosition.offset >= documentLength;
+      final isTapOnUnselectedText =
+          tapPosition.offset < currentSelection.start || tapPosition.offset >= currentSelection.end;
+
+      if (isTapOnEmptySpace || isTapOnUnselectedText) {
+        // Collapse selection immediately when tapping on empty space or unselected text
+        // This ensures single-tap deselection works on mobile
+        final collapsedSelection = TextSelection.collapsed(
+          offset: isTapOnEmptySpace ? documentLength : tapPosition.offset,
+        );
+        rawEditorState?.controller.skipRequestKeyboard = true;
+        rawEditorState?.controller.updateSelection(collapsedSelection, ChangeSource.local);
+        rawEditorState?.controller.skipRequestKeyboard = false;
+        renderEditor!.setSelection(collapsedSelection);
+
+        // Hide toolbar after collapsing selection
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          if (renderEditor != null &&
+              renderEditor!.selection.isCollapsed &&
+              editor != null &&
+              (editor as State).mounted) {
+            editor!.hideToolbar();
+          }
+        });
+
+        // Don't proceed with normal tap handling since we've already handled it
+        //return;
+      }
+    }
+
     // Delay hiding toolbar to allow selection to complete
     // For touch devices, we show toolbar on single tap when focused, so don't hide it
     // For other cases, hide toolbar if selection is collapsed
