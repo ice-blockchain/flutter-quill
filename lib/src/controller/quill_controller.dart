@@ -124,6 +124,20 @@ class QuillController extends ChangeNotifier {
   /// See also: [QuillRawEditorState._didChangeTextEditingValue]
   bool skipRequestKeyboard = false;
 
+  /// The last [ChangeSource] used in [updateSelection].
+  /// Used to determine if toolbar should be hidden when selection changes.
+  ChangeSource? _lastSelectionChangeSource;
+
+  /// Get the last [ChangeSource] used in [updateSelection].
+  ChangeSource? get lastSelectionChangeSource => _lastSelectionChangeSource;
+
+  /// Reset the last selection change source.
+  /// Called by the editor state after checking the source.
+  @internal
+  void resetLastSelectionChangeSource() {
+    _lastSelectionChangeSource = null;
+  }
+
   /// True when this [QuillController] instance has been disposed.
   ///
   /// A safety mechanism to ensure that listeners don't crash when adding,
@@ -218,15 +232,13 @@ class QuillController extends ChangeNotifier {
 
   /// Returns plain text for each node within selection
   String getPlainText() {
-    final text =
-        document.getPlainText(selection.start, selection.end - selection.start);
+    final text = document.getPlainText(selection.start, selection.end - selection.start);
     return text;
   }
 
   /// Returns all styles for any character within the specified text range.
   List<Style> getAllSelectionStyles() {
-    final styles = document.collectAllStyles(
-        selection.start, selection.end - selection.start)
+    final styles = document.collectAllStyles(selection.start, selection.end - selection.start)
       ..add(toggledStyle);
     return styles;
   }
@@ -260,8 +272,8 @@ class QuillController extends ChangeNotifier {
 
   /// clear editor
   void clear() {
-    replaceText(0, plainTextEditingValue.text.length - 1, '',
-        const TextSelection.collapsed(offset: 0));
+    replaceText(
+        0, plainTextEditingValue.text.length - 1, '', const TextSelection.collapsed(offset: 0));
   }
 
   void replaceText(
@@ -284,20 +296,13 @@ class QuillController extends ChangeNotifier {
       delta = document.replace(index, len, data);
 
       /// Remove block styles as they can only be attached to line endings
-      style = Style.attr(Map<String, Attribute>.fromEntries(toggledStyle
-          .attributes.entries
-          .where((a) => a.value.scope != AttributeScope.block)));
-      var shouldRetainDelta = style.isNotEmpty &&
-          delta.isNotEmpty &&
-          delta.length <= 2 &&
-          delta.last.isInsert;
-      if (shouldRetainDelta &&
-          style.isNotEmpty &&
-          delta.length == 2 &&
-          delta.last.data == '\n') {
+      style = Style.attr(Map<String, Attribute>.fromEntries(
+          toggledStyle.attributes.entries.where((a) => a.value.scope != AttributeScope.block)));
+      var shouldRetainDelta =
+          style.isNotEmpty && delta.isNotEmpty && delta.length <= 2 && delta.last.isInsert;
+      if (shouldRetainDelta && style.isNotEmpty && delta.length == 2 && delta.last.data == '\n') {
         // if all attributes are inline, shouldRetainDelta should be false
-        final anyAttributeNotInline =
-            style.values.any((attr) => !attr.isInline);
+        final anyAttributeNotInline = style.values.any((attr) => !attr.isInline);
         if (!anyAttributeNotInline) {
           shouldRetainDelta = false;
         }
@@ -342,8 +347,7 @@ class QuillController extends ChangeNotifier {
   /// forward == true && textAfter.isEmpty
   /// Android only
   /// see https://github.com/singerdmx/flutter-quill/discussions/514
-  void handleDelete(int cursorPosition, bool forward) =>
-      onDelete?.call(cursorPosition, forward);
+  void handleDelete(int cursorPosition, bool forward) => onDelete?.call(cursorPosition, forward);
 
   void formatTextStyle(int index, int len, Style style) {
     style.attributes.forEach((key, attr) {
@@ -378,8 +382,7 @@ class QuillController extends ChangeNotifier {
     }
   }
 
-  void formatSelection(Attribute? attribute,
-      {@experimental bool shouldNotifyListeners = true}) {
+  void formatSelection(Attribute? attribute, {@experimental bool shouldNotifyListeners = true}) {
     formatText(
       selection.start,
       selection.end - selection.start,
@@ -410,6 +413,7 @@ class QuillController extends ChangeNotifier {
   }
 
   void updateSelection(TextSelection textSelection, ChangeSource source) {
+    _lastSelectionChangeSource = source;
     _updateSelection(textSelection);
     notifyListeners();
   }
@@ -461,8 +465,7 @@ class QuillController extends ChangeNotifier {
     super.dispose();
   }
 
-  void _updateSelection(TextSelection textSelection,
-      {bool insertNewline = false}) {
+  void _updateSelection(TextSelection textSelection, {bool insertNewline = false}) {
     _selection = textSelection;
     final end = document.length - 1;
     _selection = selection.copyWith(
@@ -539,8 +542,7 @@ class QuillController extends ChangeNotifier {
       if (!copy) {
         if (readOnly) return false;
         final sel = selection;
-        replaceText(sel.start, sel.end - sel.start, '',
-            TextSelection.collapsed(offset: sel.start));
+        replaceText(sel.start, sel.end - sel.start, '', TextSelection.collapsed(offset: sel.start));
       }
       return true;
     }
@@ -567,8 +569,7 @@ class QuillController extends ChangeNotifier {
     }
 
     const enableExternalRichPasteDefault = true;
-    if (clipboardConfig?.enableExternalRichPaste ??
-        enableExternalRichPasteDefault) {
+    if (clipboardConfig?.enableExternalRichPaste ?? enableExternalRichPasteDefault) {
       final pasteHtmlSuccess = await pasteHTML();
       if (pasteHtmlSuccess) {
         updateEditor?.call();
@@ -682,10 +683,8 @@ class QuillController extends ChangeNotifier {
     bool ignoreFocus = false,
     @experimental bool shouldNotifyListeners = true,
   }) {
-    final containsEmbed =
-        insertedText.codeUnits.contains(Embed.kObjectReplacementInt);
-    insertedText =
-        containsEmbed ? _adjustInsertedText(insertedText) : insertedText;
+    final containsEmbed = insertedText.codeUnits.contains(Embed.kObjectReplacementInt);
+    insertedText = containsEmbed ? _adjustInsertedText(insertedText) : insertedText;
 
     replaceText(index, len, insertedText, textSelection,
         ignoreFocus: ignoreFocus, shouldNotifyListeners: shouldNotifyListeners);
@@ -693,10 +692,8 @@ class QuillController extends ChangeNotifier {
     _applyPasteStyleAndEmbed(insertedText, index, containsEmbed);
   }
 
-  void _applyPasteStyleAndEmbed(
-      String insertedText, int start, bool containsEmbed) {
-    if (insertedText == pastePlainText && pastePlainText != '' ||
-        containsEmbed) {
+  void _applyPasteStyleAndEmbed(String insertedText, int start, bool containsEmbed) {
+    if (insertedText == pastePlainText && pastePlainText != '' || containsEmbed) {
       final pos = start;
       for (final p in pasteStyleAndEmbed) {
         final offset = p.offset;

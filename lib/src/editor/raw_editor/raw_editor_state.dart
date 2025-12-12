@@ -329,33 +329,33 @@ class QuillRawEditorState extends EditorState
   }
 
   void _defaultOnTapOutside(PointerDownEvent event) {
-    // Hide toolbar when tapping outside, regardless of selection state
+    // Hide toolbar immediately when tapping outside, regardless of selection state
     // But skip if handles are visible (user might be dragging selection handles)
     if (_selectionOverlay?.toolbar != null &&
         mounted &&
         _selectionOverlay?.handlesVisible != true) {
-      // On Android, use post-frame callback to avoid race conditions with selection changes
-      // that might cause double toolbars
-      if (defaultTargetPlatform == TargetPlatform.android) {
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          // Double-check mounted state and overlay state before hiding
-          // Also check if there's a hiding toolbar that needs to be cleaned up
-          // Use try-catch to handle cases where context becomes invalid
-          if (mounted &&
-              _selectionOverlay != null &&
-              _selectionOverlay!.toolbar != null &&
-              _selectionOverlay!.handlesVisible != true) {
-            try {
-              hideToolbar();
-            } catch (e) {
-              // Context might be invalid if widget was unmounted
-              // Silently ignore the error
-            }
-          }
-        });
-      } else {
+      // Hide toolbar immediately, then also ensure it stays hidden after selection changes
+      try {
         hideToolbar();
+      } catch (e) {
+        // Context might be invalid if widget was unmounted
+        // Silently ignore the error
       }
+
+      // Also ensure toolbar stays hidden after any selection changes that might occur
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted &&
+            _selectionOverlay != null &&
+            _selectionOverlay!.toolbar != null &&
+            _selectionOverlay!.handlesVisible != true) {
+          try {
+            hideToolbar();
+          } catch (e) {
+            // Context might be invalid if widget was unmounted
+            // Silently ignore the error
+          }
+        }
+      });
     }
 
     // Collapse selection when tapping outside if there's a non-collapsed selection
@@ -597,12 +597,21 @@ class QuillRawEditorState extends EditorState
     // Hide toolbar when cursor moves (not due to drag) and toolbar is currently shown
     // This matches Flutter TextField behavior: toolbar hides when cursor moves via selection
     // Also hide toolbar when selection collapses from non-collapsed to collapsed
-    // (e.g., when user taps on unselected text to deselect)
+    // (e.g., when user taps on unselected text to deselect or taps outside)
+    // Always hide when selection collapses, even if cursor position doesn't change
+    // This ensures toolbar is hidden when tapping outside (which collapses selection to end)
     final selectionCollapsed = oldSelection.isCollapsed == false && selection.isCollapsed == true;
-    if (cause != SelectionChangedCause.drag &&
+
+    // Always hide toolbar when selection collapses (e.g., from tapping outside)
+    if (selectionCollapsed &&
+        _selectionOverlay?.toolbar != null &&
+        cause != SelectionChangedCause.drag) {
+      hideToolbar();
+    } else if (cause != SelectionChangedCause.drag &&
         _selectionOverlay?.toolbar != null &&
         selection.isCollapsed &&
-        (oldCursorOffset != newCursorOffset || selectionCollapsed)) {
+        oldCursorOffset != newCursorOffset) {
+      // Hide toolbar when cursor moves (but selection didn't collapse)
       hideToolbar();
     }
 
@@ -1119,6 +1128,14 @@ class QuillRawEditorState extends EditorState
       }
     }
 
+    // Hide toolbar when selection is updated with ChangeSource.silent
+    if (controller.lastSelectionChangeSource == ChangeSource.silent &&
+        _selectionOverlay?.toolbar != null) {
+      hideToolbar();
+      // Reset the flag after checking to prevent stale state
+      controller.resetLastSelectionChangeSource();
+    }
+
     _shortcutActionsManager.adjacentLineAction.stopCurrentVerticalRunIfSelectionChanges();
   }
 
@@ -1129,6 +1146,7 @@ class QuillRawEditorState extends EditorState
     }
 
     // Hide toolbar only when text actually changes (user typing), not when selection changes
+    // Formatting changes should NOT hide the toolbar - it should stay visible
     // Check if text changed by comparing with the previous text value
     final currentText = textEditingValue.text;
     final previousText = _previousTextValue;
@@ -1210,6 +1228,12 @@ class QuillRawEditorState extends EditorState
       SchedulerBinding.instance.addPostFrameCallback((_) => _handleFocusChanged());
       return;
     }
+
+    // Hide toolbar when focus is lost (e.g., when tapping outside)
+    if (!_hasFocus && _selectionOverlay?.toolbar != null) {
+      hideToolbar();
+    }
+
     openOrCloseConnection();
     _cursorCont.startOrStopCursorTimerIfNeeded(_hasFocus, controller.selection);
     _updateOrDisposeSelectionOverlayIfNeeded();
