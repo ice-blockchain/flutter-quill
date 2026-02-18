@@ -1,69 +1,43 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-typedef QuillMagnifierBuilder = Widget Function(Offset dragGlobalPosition);
+typedef QuillMagnifierBuilder = Widget Function(Offset dragPosition);
 
-Widget defaultQuillMagnifierBuilder(Offset dragGlobalPosition) =>
-    QuillMagnifier(dragGlobalPosition: dragGlobalPosition);
+Widget defaultQuillMagnifierBuilder(Offset dragPosition) =>
+    QuillMagnifier(dragPosition: dragPosition);
 
 class QuillMagnifier extends StatelessWidget {
-  const QuillMagnifier({required this.dragGlobalPosition, super.key});
+  const QuillMagnifier({required this.dragPosition, super.key});
 
-  // Global position where the text is (where the magnifier should point to)
-  final Offset dragGlobalPosition;
+  final Offset dragPosition;
 
   @override
   Widget build(BuildContext context) {
-    const magnifierSize = Size(80, 40);
-
-    // This is the "pointer" location relative to the
-    // magnifier widget's own top-left corner.
-    const focalPointOffset = Offset(0, 60);
-
-    // Calculate the global top-left position for the magnifier widget
-    // so that its "pointer" (focalPointOffset) lands
-    // exactly on the dragGlobalPosition.
-    final magnifierGlobalPosition = dragGlobalPosition - focalPointOffset;
-
-    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
-
+    final position = dragPosition.translate(-60, -80);
     return Positioned(
-      left: magnifierGlobalPosition.dx - magnifierSize.width / 2,
-      top: magnifierGlobalPosition.dy - magnifierSize.height / 2,
-      child: IgnorePointer(
+      top: position.dy,
+      left: position.dx,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: RawMagnifier(
           clipBehavior: Clip.hardEdge,
           decoration: MagnifierDecoration(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(isAndroid ? 40 : 25),
-              ),
-              side: isAndroid
-                  ? BorderSide.none
-                  : const BorderSide(
-                      color: Color(0xFF2D64F6),
-                      width: 2,
-                    ),
+              borderRadius: BorderRadius.circular(20),
             ),
-            shadows: isAndroid
-                ? const [
-                    BoxShadow(
-                      blurRadius: 1.5,
-                      offset: Offset(0, 2),
-                      spreadRadius: 0.75,
-                      color: Color.fromARGB(25, 0, 0, 0),
-                    ),
-                  ]
-                : null,
+            shadows: const [
+              BoxShadow(
+                color: Colors.black26,
+                spreadRadius: 2,
+                blurRadius: 5,
+                offset: Offset(3, 3),
+              ),
+            ],
           ),
-          size: isAndroid ? const Size(77.37, 37.9) : magnifierSize,
-          focalPointOffset: focalPointOffset,
-          magnificationScale: isAndroid ? 1.25 : 1.5,
-          child: isAndroid
-              ? const ColoredBox(
-                  color: Color.fromARGB(8, 158, 158, 158),
-                )
-              : null,
+          size: const Size(100, 45),
+          focalPointOffset: const Offset(5, 55),
+          magnificationScale: 1.3,
         ),
       ),
     );

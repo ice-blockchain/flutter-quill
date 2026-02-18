@@ -478,6 +478,7 @@ class QuillRawEditorState extends EditorState
             SingleChildScrollView(
               controller: _scrollController,
               physics: widget.config.scrollPhysics,
+              clipBehavior: Clip.none,
               child: CompositedTransformTarget(
                 link: _toolbarLayerLink,
                 child: MouseRegion(
@@ -1084,8 +1085,11 @@ class QuillRawEditorState extends EditorState
 
   void _updateSelectionOverlayForScroll() {
     _selectionOverlay?.updateForScroll();
-    // Hide toolbar when scrolling
-    if (_selectionOverlay?.toolbar != null && mounted) {
+    // Hide toolbar when scrolling - but NOT when user is dragging handle
+    // (scroll from bringIntoView during drag would destroy overlay & freeze magnifier)
+    if (_selectionOverlay?.toolbar != null &&
+        mounted &&
+        widget.dragOffsetNotifier?.value == null) {
       hideToolbar();
     }
   }
