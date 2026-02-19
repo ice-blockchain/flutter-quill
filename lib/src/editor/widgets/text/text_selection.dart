@@ -905,8 +905,9 @@ class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelection
   // _isDoubleTap for mouse right click
   bool _isSecondaryDoubleTap = false;
 
-  // The last offset of the drag gesture.
+  // The last offset of the drag gesture (global coordinates when using Overlay).
   Offset? _magnifierPosition;
+  OverlayEntry? _magnifierOverlayEntry;
 
   @override
   void initState() {
@@ -920,26 +921,48 @@ class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelection
     _doubleTapTimer?.cancel();
     _dragUpdateThrottleTimer?.cancel();
     widget.dragOffsetNotifier?.removeListener(_dragOffsetListener);
+    _removeMagnifierOverlay();
     super.dispose();
+  }
+
+  void _removeMagnifierOverlay() {
+    _magnifierOverlayEntry?.remove();
+    _magnifierOverlayEntry = null;
   }
 
   void _dragOffsetListener() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Offset? position;
-
       final globalPosition = widget.dragOffsetNotifier?.value;
+      _magnifierPosition = globalPosition;
 
-      if (globalPosition != null) {
-        final renderBox = context.findRenderObject()! as RenderBox;
-        position = renderBox.globalToLocal(globalPosition);
+      if (widget.quillMagnifierBuilder != null && context.mounted) {
+        if (globalPosition != null) {
+          _showMagnifierInOverlay();
+        } else {
+          _removeMagnifierOverlay();
+        }
       }
 
       if (mounted) {
-        setState(() {
-          _magnifierPosition = position;
-        });
+        setState(() {});
       }
     });
+  }
+
+  void _showMagnifierInOverlay() {
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null || _magnifierPosition == null) return;
+
+    if (_magnifierOverlayEntry == null) {
+      _magnifierOverlayEntry = OverlayEntry(
+        builder: (context) => _magnifierPosition != null
+            ? widget.quillMagnifierBuilder!(_magnifierPosition!)
+            : const SizedBox.shrink(),
+      );
+      overlay.insert(_magnifierOverlayEntry!);
+    } else {
+      _magnifierOverlayEntry!.markNeedsBuild();
+    }
   }
 
   // The down handler is force-run on success of a single tap and optimistically
@@ -1180,16 +1203,7 @@ class _EditorTextSelectionGestureDetectorState extends State<EditorTextSelection
       gestures: gestures,
       excludeFromSemantics: true,
       behavior: widget.behavior,
-      child: (widget.quillMagnifierBuilder == null)
-          ? widget.child
-          : Stack(
-              clipBehavior: Clip.none,
-              children: [
-                widget.child,
-                if (_magnifierPosition != null)
-                  widget.quillMagnifierBuilder!(_magnifierPosition!)
-              ],
-            ),
+      child: widget.child,
     );
   }
 }
